@@ -16,7 +16,7 @@ public class Main extends Application {
                     getClass().getResourceAsStream("/icon.png")
             ));
         } catch (Exception e) {
-            System.out.println("Icon not found");
+            System.err.println("Icon not found: " + e.getMessage());
         }
 
         primaryStage.setTitle("File Commander");

@@ -49,4 +49,33 @@ public class SettingsRepository {
     public boolean isDarkTheme() {
         return "dark".equals(getTheme());
     }
+
+    public String getLanguage() {
+        String sql = "SELECT value FROM settings WHERE key = 'language'";
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            if (rs.next()) {
+                String language = rs.getString("value");
+                System.out.println("Loaded language from DB: " + language);
+                return language;
+            }
+        } catch (SQLException e) {
+            System.err.println("Error loading language: " + e.getMessage());
+        }
+
+        return "uk";
+    }
+
+    public void saveLanguage(String language) {
+        String sql = "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('language', ?, CURRENT_TIMESTAMP)";
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, language);
+            stmt.executeUpdate();
+            System.out.println("Language saved to DB: " + language);
+        } catch (SQLException e) {
+            System.err.println("Error saving language: " + e.getMessage());
+        }
+    }
 }

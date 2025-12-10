@@ -1,6 +1,7 @@
 package com.filecommander.ui;
 
 import com.filecommander.controller.FileController;
+import com.filecommander.localization.LocalizationManager;
 import com.filecommander.ui.dialogs.WebViewHistoryDialog;
 import javafx.application.Platform;
 import javafx.concurrent.Worker;
@@ -35,7 +36,6 @@ public class WebViewToolbar extends BorderPane {
                 JSObject window = (JSObject) webEngine.executeScript("window");
                 window.setMember("javaBridge", jsBridge);
 
-                // Применяем тему после загрузки
                 Platform.runLater(() -> {
                     if (mainWindow != null) {
                         setTheme(mainWindow.isDarkTheme());
@@ -45,9 +45,9 @@ public class WebViewToolbar extends BorderPane {
         });
 
         setCenter(webView);
-        setPrefHeight(70);
-        setMinHeight(70);
-        setMaxHeight(70);
+        setPrefHeight(85);
+        setMinHeight(85);
+        setMaxHeight(85);
     }
 
     public void setTheme(boolean isDark) {
@@ -65,6 +65,13 @@ public class WebViewToolbar extends BorderPane {
         }
     }
 
+    public void updateLanguage() {
+        if (webEngine != null) {
+            webEngine.loadContent(getHTMLContent());
+            Platform.runLater(() -> setTheme(mainWindow.isDarkTheme()));
+        }
+    }
+
     public void updateHiddenFilesButton() {
         boolean showing = controller.isShowHiddenFiles();
         if (webEngine != null) {
@@ -73,6 +80,8 @@ public class WebViewToolbar extends BorderPane {
     }
 
     private String getHTMLContent() {
+        LocalizationManager loc = LocalizationManager.getInstance();
+
         return "<!DOCTYPE html>" +
                 "<html>" +
                 "<head>" +
@@ -117,38 +126,46 @@ public class WebViewToolbar extends BorderPane {
                 "}" +
                 ".toolbar {" +
                 "  height:100%;" +
+                "  min-height:80px;" +
                 "  background:linear-gradient(180deg,var(--bg-toolbar) 0%,rgba(245,247,250,0.5) 100%);" +
                 "  backdrop-filter:blur(20px) saturate(180%);" +
                 "  -webkit-backdrop-filter:blur(20px) saturate(180%);" +
                 "  display:flex;" +
                 "  align-items:center;" +
-                "  padding:0 24px;" +
-                "  gap:12px;" +
+                "  padding:0 16px;" +
+                "  gap:8px;" +
                 "  border-bottom:1px solid var(--border);" +
                 "  box-shadow:var(--shadow-md);" +
                 "  position:relative;" +
+                "  overflow-x:auto;" +
+                "  overflow-y:hidden;" +
                 "}" +
+                ".toolbar::-webkit-scrollbar { height:5px; }" +
+                ".toolbar::-webkit-scrollbar-track { background:transparent; }" +
+                ".toolbar::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }" +
+                ".toolbar::-webkit-scrollbar-thumb:hover { background:var(--accent); }" +
                 "body.dark .toolbar {" +
                 "  background:linear-gradient(180deg,var(--bg-toolbar) 0%,rgba(20,20,20,0.5) 100%);" +
                 "}" +
                 ".button-group {" +
                 "  display:flex;" +
-                "  gap:6px;" +
+                "  gap:4px;" +
                 "  padding:6px;" +
                 "  background:var(--bg-group);" +
                 "  backdrop-filter:blur(10px);" +
                 "  -webkit-backdrop-filter:blur(10px);" +
-                "  border-radius:12px;" +
+                "  border-radius:11px;" +
                 "  border:1px solid var(--border);" +
                 "  box-shadow:var(--shadow-sm);" +
                 "  opacity:0;" +
                 "  animation:slideDown 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;" +
                 "  position:relative;" +
+                "  flex-shrink:0;" +
                 "}" +
                 ".button-group::after {" +
                 "  content:'';" +
                 "  position:absolute;" +
-                "  right:-7px;" +
+                "  right:-5px;" +
                 "  top:50%;" +
                 "  transform:translateY(-50%);" +
                 "  width:1px;" +
@@ -162,15 +179,16 @@ public class WebViewToolbar extends BorderPane {
                 ".tool-button {" +
                 "  display:flex;" +
                 "  align-items:center;" +
-                "  gap:10px;" +
-                "  padding:10px 16px;" +
+                "  gap:6px;" +
+                "  padding:8px 11px;" +
                 "  background:transparent;" +
                 "  border:none;" +
-                "  border-radius:10px;" +
+                "  border-radius:9px;" +
                 "  cursor:pointer;" +
                 "  transition:all 0.3s cubic-bezier(0.4,0,0.2,1);" +
                 "  position:relative;" +
                 "  overflow:hidden;" +
+                "  white-space:nowrap;" +
                 "}" +
                 ".tool-button::before {" +
                 "  content:'';" +
@@ -179,7 +197,7 @@ public class WebViewToolbar extends BorderPane {
                 "  background:linear-gradient(135deg,var(--accent) 0%,var(--accent-hover) 100%);" +
                 "  opacity:0;" +
                 "  transition:opacity 0.3s;" +
-                "  border-radius:10px;" +
+                "  border-radius:9px;" +
                 "}" +
                 ".tool-button::after {" +
                 "  content:'';" +
@@ -205,20 +223,20 @@ public class WebViewToolbar extends BorderPane {
                 "  box-shadow:var(--shadow-sm);" +
                 "}" +
                 ".button-text {" +
-                "  font-size:13px;" +
+                "  font-size:12.5px;" +
                 "  font-weight:600;" +
                 "  color:var(--text-primary);" +
                 "  position:relative;" +
                 "  z-index:1;" +
-                "  letter-spacing:0.3px;" +
+                "  letter-spacing:0.2px;" +
                 "}" +
                 ".button-hotkey {" +
-                "  font-size:10px;" +
+                "  font-size:9.5px;" +
                 "  color:var(--text-secondary);" +
                 "  font-weight:700;" +
-                "  padding:3px 8px;" +
+                "  padding:2px 6px;" +
                 "  background:linear-gradient(135deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.02) 100%);" +
-                "  border-radius:6px;" +
+                "  border-radius:5px;" +
                 "  position:relative;" +
                 "  z-index:1;" +
                 "  border:1px solid var(--border);" +
@@ -262,53 +280,87 @@ public class WebViewToolbar extends BorderPane {
                 ".tool-button.accent:active {" +
                 "  transform:translateY(-1px) scale(0.98);" +
                 "}" +
+                ".flag-icon {" +
+                "  width:22px;" +
+                "  height:16px;" +
+                "  display:inline-block;" +
+                "  border-radius:2px;" +
+                "  box-shadow:0 1px 2px rgba(0,0,0,0.2);" +
+                "  vertical-align:middle;" +
+                "  position:relative;" +
+                "  z-index:1;" +
+                "}" +
+                ".flag-separator {" +
+                "  color:var(--text-secondary);" +
+                "  font-size:11px;" +
+                "  margin:0 2px;" +
+                "  position:relative;" +
+                "  z-index:1;" +
+                "}" +
                 "</style>" +
                 "</head>" +
                 "<body>" +
                 "<div class=\"toolbar\">" +
                 "  <div class=\"button-group\">" +
                 "    <button class=\"tool-button\" onclick=\"executeAction('copy')\">" +
-                "      <span class=\"button-text\">Copy</span>" +
+                "      <span class=\"button-text\">" + loc.getString("toolbar.copy") + "</span>" +
                 "      <span class=\"button-hotkey\">F3</span>" +
                 "    </button>" +
                 "    <button class=\"tool-button\" onclick=\"executeAction('move')\">" +
-                "      <span class=\"button-text\">Move</span>" +
+                "      <span class=\"button-text\">" + loc.getString("toolbar.move") + "</span>" +
                 "      <span class=\"button-hotkey\">F6</span>" +
                 "    </button>" +
                 "    <button class=\"tool-button\" onclick=\"executeAction('delete')\">" +
-                "      <span class=\"button-text\">Delete</span>" +
+                "      <span class=\"button-text\">" + loc.getString("toolbar.delete") + "</span>" +
                 "      <span class=\"button-hotkey\">F8</span>" +
                 "    </button>" +
                 "    <button class=\"tool-button\" onclick=\"executeAction('newFolder')\">" +
-                "      <span class=\"button-text\">New Folder</span>" +
+                "      <span class=\"button-text\">" + loc.getString("toolbar.newFolder") + "</span>" +
                 "      <span class=\"button-hotkey\">F7</span>" +
                 "    </button>" +
                 "  </div>" +
                 "  <div class=\"button-group\">" +
                 "    <button class=\"tool-button\" onclick=\"executeAction('rename')\">" +
-                "      <span class=\"button-text\">Rename</span>" +
+                "      <span class=\"button-text\">" + loc.getString("toolbar.rename") + "</span>" +
                 "      <span class=\"button-hotkey\">F2</span>" +
                 "    </button>" +
                 "    <button class=\"tool-button accent\" onclick=\"executeAction('search')\">" +
-                "      <span class=\"button-text\">Search</span>" +
+                "      <span class=\"button-text\">" + loc.getString("toolbar.search") + "</span>" +
                 "      <span class=\"button-hotkey\">Ctrl+F</span>" +
                 "    </button>" +
                 "    <button class=\"tool-button\" onclick=\"executeAction('undo')\">" +
-                "      <span class=\"button-text\">Undo</span>" +
+                "      <span class=\"button-text\">" + loc.getString("toolbar.undo") + "</span>" +
                 "      <span class=\"button-hotkey\">Ctrl+Z</span>" +
                 "    </button>" +
                 "  </div>" +
                 "  <div class=\"button-group\">" +
                 "    <button class=\"tool-button\" onclick=\"executeAction('history')\">" +
-                "      <span class=\"button-text\">History</span>" +
+                "      <span class=\"button-text\">" + loc.getString("toolbar.history") + "</span>" +
                 "    </button>" +
                 "    <button class=\"tool-button\" id=\"hiddenBtn\" onclick=\"executeAction('toggleHidden')\">" +
-                "      <span class=\"button-text\">Show Hidden</span>" +
+                "      <span class=\"button-text\">" + loc.getString("toolbar.showHidden") + "</span>" +
                 "      <span class=\"button-hotkey\">Ctrl+H</span>" +
                 "    </button>" +
                 "    <button class=\"tool-button\" onclick=\"executeAction('toggleTheme')\">" +
-                "      <span class=\"button-text\">Theme</span>" +
+                "      <span class=\"button-text\">" + loc.getString("toolbar.theme") + "</span>" +
                 "      <span class=\"button-hotkey\">Ctrl+T</span>" +
+                "    </button>" +
+                "    <button class=\"tool-button\" onclick=\"executeAction('changeLanguage')\">" +
+                "      <svg class=\"flag-icon\" viewBox=\"0 0 3 2\">" +
+                "        <rect width=\"3\" height=\"1\" fill=\"#0057B7\"/>" +
+                "        <rect width=\"3\" height=\"1\" y=\"1\" fill=\"#FFD700\"/>" +
+                "      </svg>" +
+                "      <span class=\"flag-separator\">|</span>" +
+                "      <svg class=\"flag-icon\" viewBox=\"0 0 60 30\">" +
+                "        <clipPath id=\"t\"><path d=\"M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z\"/></clipPath>" +
+                "        <path d=\"M0,0 v30 h60 v-30 z\" fill=\"#012169\"/>" +
+                "        <path d=\"M0,0 L60,30 M60,0 L0,30\" stroke=\"#fff\" stroke-width=\"6\"/>" +
+                "        <path d=\"M0,0 L60,30 M60,0 L0,30\" clip-path=\"url(#t)\" stroke=\"#C8102E\" stroke-width=\"4\"/>" +
+                "        <path d=\"M30,0 v30 M0,15 h60\" stroke=\"#fff\" stroke-width=\"10\"/>" +
+                "        <path d=\"M30,0 v30 M0,15 h60\" stroke=\"#C8102E\" stroke-width=\"6\"/>" +
+                "      </svg>" +
+                "      <span class=\"button-text\">Мова/Language</span>" +
+                "      <span class=\"button-hotkey\">Ctrl+L</span>" +
                 "    </button>" +
                 "  </div>" +
                 "</div>" +
@@ -330,9 +382,9 @@ public class WebViewToolbar extends BorderPane {
                 "  const btn=document.getElementById('hiddenBtn');" +
                 "  const textSpan=btn.querySelector('.button-text');" +
                 "  if(showing){" +
-                "    textSpan.textContent='Hide Hidden';" +
+                "    textSpan.textContent='" + loc.getString("toolbar.hideHidden") + "';" +
                 "  }else{" +
-                "    textSpan.textContent='Show Hidden';" +
+                "    textSpan.textContent='" + loc.getString("toolbar.showHidden") + "';" +
                 "  }" +
                 "}" +
                 "</script>" +
@@ -342,9 +394,10 @@ public class WebViewToolbar extends BorderPane {
 
     private void showSearchModeError() {
         Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle("Operation Not Available");
+        mainWindow.setIconForDialog(alert);
+        alert.setTitle(LocalizationManager.getInstance().getString("error.operationUnavailable"));
         alert.setHeaderText(null);
-        alert.setContentText("This operation is not available in search results mode.\nOnly copying is available.");
+        alert.setContentText(LocalizationManager.getInstance().getString("error.searchModeRestriction"));
         alert.showAndWait();
     }
 
@@ -353,8 +406,14 @@ public class WebViewToolbar extends BorderPane {
             javafx.application.Platform.runLater(() -> {
                 FXFilePanel activePanel = mainWindow.getActivePanel();
 
+                boolean isSafeAction = action.equals("copy") ||
+                        action.equals("history") ||
+                        action.equals("toggleTheme") ||
+                        action.equals("changeLanguage") ||
+                        action.equals("toggleHidden");
+
                 if (activePanel != null && activePanel.isInSearchMode()) {
-                    if (!action.equals("copy")) {
+                    if (!isSafeAction) {
                         showSearchModeError();
                         return;
                     }
@@ -363,32 +422,28 @@ public class WebViewToolbar extends BorderPane {
                 switch (action) {
                     case "copy":
                         if (activePanel != null) {
-                            controller.showCopyDestinationMenu(activePanel);
+                            if (activePanel.isInSearchMode()) {
+                                controller.showCopyDestinationMenu(activePanel);
+                            } else {
+                                controller.showCopyDestinationMenu(activePanel);
+                            }
                         }
                         break;
 
                     case "move":
-                        if (activePanel != null) {
-                            controller.initiateMoveOperation(activePanel);
-                        }
+                        if (activePanel != null) controller.initiateMoveOperation(activePanel);
                         break;
 
                     case "delete":
-                        if (activePanel != null) {
-                            controller.initiateDeleteOperation(activePanel);
-                        }
+                        if (activePanel != null) controller.initiateDeleteOperation(activePanel);
                         break;
 
                     case "newFolder":
-                        if (activePanel != null) {
-                            activePanel.handleKeyPress(javafx.scene.input.KeyCode.F7);
-                        }
+                        if (activePanel != null) activePanel.handleKeyPress(javafx.scene.input.KeyCode.F7);
                         break;
 
                     case "rename":
-                        if (activePanel != null) {
-                            activePanel.handleKeyPress(javafx.scene.input.KeyCode.F2);
-                        }
+                        if (activePanel != null) activePanel.handleKeyPress(javafx.scene.input.KeyCode.F2);
                         break;
 
                     case "search":
@@ -412,6 +467,10 @@ public class WebViewToolbar extends BorderPane {
 
                     case "toggleTheme":
                         mainWindow.toggleTheme();
+                        break;
+
+                    case "changeLanguage":
+                        mainWindow.changeLanguage();
                         break;
                 }
             });

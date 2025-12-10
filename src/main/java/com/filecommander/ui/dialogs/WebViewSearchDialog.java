@@ -1,5 +1,6 @@
 package com.filecommander.ui.dialogs;
 
+import com.filecommander.localization.LocalizationManager;
 import javafx.concurrent.Worker;
 import javafx.scene.Scene;
 import javafx.scene.layout.BorderPane;
@@ -20,6 +21,7 @@ public class WebViewSearchDialog extends Stage {
     private JSBridge jsBridge;
     private BiConsumer<SearchParams, PanelChoice> onSearch;
     private boolean isDarkTheme;
+    private LocalizationManager loc;
 
     public enum PanelChoice {
         LEFT, RIGHT, ACTIVE
@@ -28,8 +30,9 @@ public class WebViewSearchDialog extends Stage {
     public WebViewSearchDialog(BiConsumer<SearchParams, PanelChoice> onSearch, boolean isDarkTheme) {
         this.onSearch = onSearch;
         this.isDarkTheme = isDarkTheme;
+        this.loc = LocalizationManager.getInstance();
         initializeWebView();
-        setTitle("Search Files and Folders");
+        setTitle(loc.getString("search.title"));
         initStyle(StageStyle.UNDECORATED);
     }
 
@@ -57,6 +60,15 @@ public class WebViewSearchDialog extends Stage {
 
         Scene scene = new Scene(root, 600, 580);
         setScene(scene);
+    }
+
+    private String escapeJs(String str) {
+        if (str == null) return "";
+        return str.replace("\\", "\\\\")
+                .replace("'", "\\'")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r");
     }
 
     private String getHTMLContent() {
@@ -386,66 +398,66 @@ public class WebViewSearchDialog extends Stage {
                 "<div class=\"dialog-container\">\n" +
                 "  <div class=\"header\">\n" +
                 "    <div class=\"header-content\">\n" +
-                "      <div class=\"title\">Search Files and Folders</div>\n" +
-                "      <div class=\"subtitle\">Find what you need quickly</div>\n" +
+                "      <div class=\"title\">" + escapeJs(loc.getString("search.title")) + "</div>\n" +
+                "      <div class=\"subtitle\">" + escapeJs(loc.getString("search.subtitle")) + "</div>\n" +
                 "    </div>\n" +
                 "  </div>\n" +
                 "  <div class=\"content\">\n" +
                 "    <div class=\"form-group\">\n" +
-                "      <label class=\"label\">Search Query</label>\n" +
-                "      <input type=\"text\" class=\"input\" id=\"searchInput\" placeholder=\"*.txt, *.pdf, filename, etc.\" autofocus>\n" +
+                "      <label class=\"label\">" + escapeJs(loc.getString("search.query")) + "</label>\n" +
+                "      <input type=\"text\" class=\"input\" id=\"searchInput\" placeholder=\"" + escapeJs(loc.getString("search.queryPlaceholder")) + "\" autofocus>\n" +
                 "    </div>\n" +
                 "    <div class=\"form-group\">\n" +
-                "      <label class=\"label\">Search Location</label>\n" +
+                "      <label class=\"label\">" + escapeJs(loc.getString("search.location")) + "</label>\n" +
                 "      <div class=\"location-group\">\n" +
                 "        <input type=\"text\" class=\"input\" id=\"locationInput\" value=\"" + userHome + "\" placeholder=\"C:\\Users\\YourName\">\n" +
-                "        <button class=\"btn-browse\" onclick=\"browseFolder()\">Browse</button>\n" +
+                "        <button class=\"btn-browse\" onclick=\"browseFolder()\">" + escapeJs(loc.getString("search.browse")) + "</button>\n" +
                 "      </div>\n" +
                 "    </div>\n" +
                 "    <div class=\"form-group\">\n" +
-                "      <label class=\"label\">Item Type</label>\n" +
+                "      <label class=\"label\">" + escapeJs(loc.getString("search.itemTypeLabel")) + "</label>\n" +
                 "      <div class=\"radio-group\">\n" +
                 "        <div class=\"radio-option\">\n" +
                 "          <input type=\"radio\" name=\"itemType\" id=\"bothRadio\" value=\"BOTH\" checked>\n" +
-                "          <label for=\"bothRadio\">Both</label>\n" +
+                "          <label for=\"bothRadio\">" + escapeJs(loc.getString("search.itemType.both")) + "</label>\n" +
                 "        </div>\n" +
                 "        <div class=\"radio-option\">\n" +
                 "          <input type=\"radio\" name=\"itemType\" id=\"filesRadio\" value=\"FILES\">\n" +
-                "          <label for=\"filesRadio\">Files Only</label>\n" +
+                "          <label for=\"filesRadio\">" + escapeJs(loc.getString("search.itemType.files")) + "</label>\n" +
                 "        </div>\n" +
                 "        <div class=\"radio-option\">\n" +
                 "          <input type=\"radio\" name=\"itemType\" id=\"foldersRadio\" value=\"FOLDERS\">\n" +
-                "          <label for=\"foldersRadio\">Folders Only</label>\n" +
+                "          <label for=\"foldersRadio\">" + escapeJs(loc.getString("search.itemType.folders")) + "</label>\n" +
                 "        </div>\n" +
                 "      </div>\n" +
                 "    </div>\n" +
                 "    <div class=\"form-group\">\n" +
-                "      <label class=\"label\">Display Results In</label>\n" +
+                "      <label class=\"label\">" + escapeJs(loc.getString("search.showResultsIn")) + "</label>\n" +
                 "      <div class=\"radio-group\">\n" +
                 "        <div class=\"radio-option\">\n" +
                 "          <input type=\"radio\" name=\"panelChoice\" id=\"leftPanel\" value=\"LEFT\">\n" +
-                "          <label for=\"leftPanel\">Left Panel</label>\n" +
+                "          <label for=\"leftPanel\">" + escapeJs(loc.getString("search.leftPanel")) + "</label>\n" +
                 "        </div>\n" +
                 "        <div class=\"radio-option\">\n" +
                 "          <input type=\"radio\" name=\"panelChoice\" id=\"rightPanel\" value=\"RIGHT\">\n" +
-                "          <label for=\"rightPanel\">Right Panel</label>\n" +
+                "          <label for=\"rightPanel\">" + escapeJs(loc.getString("search.rightPanel")) + "</label>\n" +
                 "        </div>\n" +
                 "        <div class=\"radio-option\">\n" +
                 "          <input type=\"radio\" name=\"panelChoice\" id=\"activePanel\" value=\"ACTIVE\" checked>\n" +
-                "          <label for=\"activePanel\">Active Panel</label>\n" +
+                "          <label for=\"activePanel\">" + escapeJs(loc.getString("search.activePanel")) + "</label>\n" +
                 "        </div>\n" +
                 "      </div>\n" +
                 "    </div>\n" +
                 "    <div class=\"form-group\">\n" +
                 "      <label class=\"checkbox-wrapper\">\n" +
                 "        <input type=\"checkbox\" class=\"checkbox\" id=\"subdirCheck\" checked>\n" +
-                "        <span class=\"checkbox-label\">Include subdirectories</span>\n" +
+                "        <span class=\"checkbox-label\">" + escapeJs(loc.getString("search.includeSubdirs")) + "</span>\n" +
                 "      </label>\n" +
                 "    </div>\n" +
                 "  </div>\n" +
                 "  <div class=\"footer\">\n" +
-                "    <button class=\"btn btn-secondary\" onclick=\"closeDialog()\">Cancel</button>\n" +
-                "    <button class=\"btn btn-primary\" onclick=\"startSearch()\">Search</button>\n" +
+                "    <button class=\"btn btn-secondary\" onclick=\"closeDialog()\">" + escapeJs(loc.getString("search.cancel")) + "</button>\n" +
+                "    <button class=\"btn btn-primary\" onclick=\"startSearch()\">" + escapeJs(loc.getString("search.search")) + "</button>\n" +
                 "  </div>\n" +
                 "</div>\n" +
                 "<script>\n" +
@@ -474,7 +486,7 @@ public class WebViewSearchDialog extends Stage {
         public void browseFolder() {
             javafx.application.Platform.runLater(() -> {
                 DirectoryChooser chooser = new DirectoryChooser();
-                chooser.setTitle("Select Search Location");
+                chooser.setTitle(loc.getString("search.browseTitle"));
                 try {
                     String currentPath = webEngine.executeScript("document.getElementById('locationInput').value").toString();
                     File initialDir = new File(currentPath);

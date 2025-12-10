@@ -1,5 +1,6 @@
 package com.filecommander.command;
 
+import com.filecommander.localization.LocalizationManager;
 import com.filecommander.service.FileOperationService;
 
 import java.io.IOException;
@@ -19,14 +20,15 @@ public class DeleteCommand extends AbstractFileOperation {
 
     @Override
     protected boolean validate() {
+        LocalizationManager loc = LocalizationManager.getInstance();
         for (Path source : sources) {
             if (!Files.exists(source)) {
-                validationError = "File does not exist: " + source.getFileName();
+                validationError = loc.getString("error.fileNotExist", source.getFileName());
                 return false;
             }
 
             if (source.getParent() != null && !Files.isWritable(source.getParent())) {
-                validationError = "No write permission to delete: " + source.getFileName();
+                validationError = loc.getString("error.noWriteAccess", source.getFileName());
                 return false;
             }
         }
@@ -39,11 +41,9 @@ public class DeleteCommand extends AbstractFileOperation {
         super.prepare();
         FileOperationService service = FileOperationService.getInstance();
         try {
-            service.notifyStatus("Counting files...");
+            service.notifyStatus(LocalizationManager.getInstance().getString("operation.countingFiles"));
             totalFiles = countFiles();
-            System.out.println("Total files to delete: " + totalFiles);
         } catch (IOException e) {
-            System.err.println("Count failed: " + e.getMessage());
             totalFiles = sources.size();
         }
     }
@@ -80,11 +80,12 @@ public class DeleteCommand extends AbstractFileOperation {
     @Override
     protected void performOperation() throws IOException {
         FileOperationService service = FileOperationService.getInstance();
-        service.notifyStatus("Deleting files...");
+        LocalizationManager loc = LocalizationManager.getInstance();
+        service.notifyStatus(loc.getString("operation.deletingFiles"));
 
         for (Path source : sources) {
             if (service.isCancelled()) {
-                throw new IOException("Operation cancelled by user");
+                throw new IOException(loc.getString("operation.cancelled"));
             }
 
             if (Files.isDirectory(source)) {
@@ -143,7 +144,6 @@ public class DeleteCommand extends AbstractFileOperation {
                     System.err.println("Failed to backup file: " + file);
                 }
 
-                // ИСПОЛЬЗУЕМ forceDelete
                 forceDelete(file);
                 processedFiles++;
                 service.notifyProgress(processedFiles, totalFiles, file.getFileName().toString());
@@ -191,7 +191,9 @@ public class DeleteCommand extends AbstractFileOperation {
     public void undo() throws IOException {
         System.out.println("Undoing delete operation...");
         FileOperationService service = FileOperationService.getInstance();
-        service.notifyStatus("Preparing to restore files...");
+        LocalizationManager loc = LocalizationManager.getInstance();
+
+        service.notifyStatus(loc.getString("operation.restoring"));
 
         int totalToRestore = deletedDirectories.size() + deletedFilesBackup.size();
         int restoredCount = 0;
@@ -205,7 +207,7 @@ public class DeleteCommand extends AbstractFileOperation {
             }
 
             restoredCount++;
-            service.notifyProgress(restoredCount, totalToRestore, "Restoring dir: " + dir.getFileName());
+            service.notifyProgress(restoredCount, totalToRestore, loc.getString("operation.restoringFolder") + " " + dir.getFileName());
         }
 
         for (Map.Entry<Path, byte[]> entry : deletedFilesBackup.entrySet()) {
@@ -215,7 +217,7 @@ public class DeleteCommand extends AbstractFileOperation {
             byte[] content = entry.getValue();
 
             restoredCount++;
-            service.notifyProgress(restoredCount, totalToRestore, "Restoring file: " + path.getFileName());
+            service.notifyProgress(restoredCount, totalToRestore, loc.getString("operation.restoringFile") + " " + path.getFileName());
 
             if (!Files.exists(path)) {
                 Path parent = path.getParent();
@@ -223,17 +225,12 @@ public class DeleteCommand extends AbstractFileOperation {
                     Files.createDirectories(parent);
                 }
                 Files.write(path, content);
-                // System.out.println("Restored file: " + path);
             }
-        }
-
-        if (deletedFilesBackup.isEmpty() && !deletedDirectories.isEmpty()) {
-            System.out.println("⚠️ Warning: Could not fully restore deleted items (large files were not backed up)");
         }
     }
 
     @Override
     public String getDescription() {
-        return "Delete " + sources.size() + " item(s)";
+        return LocalizationManager.getInstance().getString("operation.description.delete", sources.size());
     }
 }

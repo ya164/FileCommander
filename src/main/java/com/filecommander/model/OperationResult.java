@@ -11,7 +11,7 @@ public class OperationResult {
     private Exception error;
 
     public static OperationResult success(List<Path> affectedPaths) {
-        return new OperationResult(true, "Operation completed successfully", affectedPaths, null);
+        return new OperationResult(true, "Операцію успішно виконано", affectedPaths, null);
     }
 
     public static OperationResult error(String message) {

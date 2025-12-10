@@ -1,5 +1,6 @@
 package com.filecommander.ui;
 
+import com.filecommander.localization.LocalizationManager;
 import javafx.application.Platform;
 import javafx.concurrent.Worker;
 import javafx.scene.layout.BorderPane;
@@ -64,11 +65,18 @@ public class WebViewSidebar extends BorderPane {
         }
     }
 
+    public void updateLanguage() {
+        if (webEngine != null) {
+            webEngine.loadContent(getHTMLContent());
+            Platform.runLater(() -> setTheme(mainWindow.isDarkTheme()));
+        }
+    }
+
     private String getDesktopPath() {
         String userHome = System.getProperty("user.home");
 
         String[] desktopPaths = {
-                userHome + "\\OneDrive\\Рабочий стол",
+                userHome + "\\OneDrive\\Робочий стол",
                 userHome + "\\OneDrive\\Desktop",
                 userHome + "\\Desktop",
                 "C:\\Users\\Public\\Desktop"
@@ -144,6 +152,8 @@ public class WebViewSidebar extends BorderPane {
     }
 
     private String getHTMLContent() {
+        LocalizationManager loc = LocalizationManager.getInstance();
+
         String userHome = System.getProperty("user.home").replace("\\", "\\\\");
         String desktopPath = getDesktopPath().replace("\\", "\\\\");
         String documentsPath = getDocumentsPath().replace("\\", "\\\\");
@@ -163,12 +173,165 @@ public class WebViewSidebar extends BorderPane {
                     .append(drivePath)
                     .append("')\"><span class=\"nav-icon\">")
                     .append(icon)
-                    .append("</span><span class=\"nav-text\">Local Disk (")
+                    .append("</span><span class=\"nav-text\">")
+                    .append(loc.getString("sidebar.localDisk"))
+                    .append(" (")
                     .append(driveName)
-                    .append(")</span></div>");
+                    .append(")</span></div>\n");
         }
 
-        return "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><style>*{margin:0;padding:0;box-sizing:border-box;user-select:none;}:root{--bg-primary:#f3f3f3;--bg-secondary:#ffffff;--bg-hover:rgba(0,153,168,0.1);--bg-active:rgba(0,153,168,0.2);--text-primary:#1c1c1c;--text-secondary:#707070;--accent:#0099a8;--accent-hover:#00b8cc;--border:rgba(0,0,0,0.08);--shadow:rgba(0,0,0,0.05);}body{font-family:'Segoe UI Variable','Segoe UI','Segoe UI Emoji','Noto Color Emoji','Apple Color Emoji',system-ui,sans-serif;background:var(--bg-primary);height:100vh;overflow:hidden;color:var(--text-primary);}body.dark{--bg-primary:#202020;--bg-secondary:#2b2b2b;--bg-hover:rgba(0,153,168,0.15);--bg-active:rgba(0,153,168,0.25);--text-primary:#e8e8e8;--text-secondary:#a0a0a0;--border:rgba(255,255,255,0.08);--shadow:rgba(0,0,0,0.3);}.sidebar{height:100%;background:var(--bg-secondary);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;border-right:1px solid var(--border);}.section{margin:20px 0 8px 16px;font-size:11px;font-weight:600;color:var(--text-secondary);letter-spacing:0.5px;text-transform:uppercase;opacity:0;animation:fadeIn 0.4s ease-out forwards;}.section:nth-child(1){animation-delay:0.1s;}.section:nth-child(9){animation-delay:0.2s;}.nav-item{display:flex;align-items:center;padding:10px 16px;margin:2px 8px;border-radius:6px;cursor:pointer;transition:all 0.2s cubic-bezier(0.4,0,0.2,1);position:relative;overflow:hidden;opacity:0;animation:slideIn 0.4s ease-out forwards;}.nav-item:nth-child(2){animation-delay:0.15s;}.nav-item:nth-child(3){animation-delay:0.18s;}.nav-item:nth-child(4){animation-delay:0.21s;}.nav-item:nth-child(5){animation-delay:0.24s;}.nav-item:nth-child(6){animation-delay:0.27s;}.nav-item:nth-child(7){animation-delay:0.30s;}.nav-item:nth-child(8){animation-delay:0.33s;}.nav-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);transform:scaleY(0);transition:transform 0.2s ease;}.nav-item:hover{background:var(--bg-hover);transform:translateX(2px);}.nav-item:hover::before{transform:scaleY(1);}.nav-item:active{background:var(--bg-active);transform:translateX(2px) scale(0.98);}.nav-icon{font-size:20px;margin-right:12px;flex-shrink:0;filter:drop-shadow(0 1px 2px var(--shadow));transition:transform 0.2s ease;}.nav-item:hover .nav-icon{transform:scale(1.1);}.nav-text{font-size:14px;font-weight:500;color:var(--text-primary);flex:1;}::-webkit-scrollbar{width:8px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:rgba(0,153,168,0.3);border-radius:4px;transition:background 0.2s;}::-webkit-scrollbar-thumb:hover{background:rgba(0,153,168,0.5);}@keyframes fadeIn{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}@keyframes slideIn{from{opacity:0;transform:translateX(-20px);}to{opacity:1;transform:translateX(0);}}</style></head><body><div class=\"sidebar\"><div class=\"section\">Quick Access</div><div class=\"nav-item\" onclick=\"navigate('" + desktopPath + "')\"><span class=\"nav-icon\">&#x1F5A5;</span><span class=\"nav-text\">Desktop</span></div><div class=\"nav-item\" onclick=\"navigate('" + documentsPath + "')\"><span class=\"nav-icon\">&#x1F4C1;</span><span class=\"nav-text\">Documents</span></div><div class=\"nav-item\" onclick=\"navigate('" + picturesPath + "')\"><span class=\"nav-icon\">&#x1F5BC;</span><span class=\"nav-text\">Pictures</span></div><div class=\"nav-item\" onclick=\"navigate('" + downloadsPath + "')\"><span class=\"nav-icon\">&#x1F4E5;</span><span class=\"nav-text\">Downloads</span></div><div class=\"nav-item\" onclick=\"navigate('" + userHome + "\\\\\\\\Music')\"><span class=\"nav-icon\">&#x1F3B5;</span><span class=\"nav-text\">Music</span></div><div class=\"nav-item\" onclick=\"navigate('" + userHome + "\\\\\\\\Videos')\"><span class=\"nav-icon\">&#x1F3AC;</span><span class=\"nav-text\">Videos</span></div><div class=\"nav-item\" onclick=\"navigate('C:\\\\\\\\\\\\\\\\Users')\"><span class=\"nav-icon\">&#x1F465;</span><span class=\"nav-text\">Users</span></div><div class=\"section\">Devices</div>" + drivesHtml.toString() + "</div><script>let isDarkTheme=false;function navigate(path){console.log('Navigating to:',path);javaBridge.navigateToPath(path);}function toggleTheme(){isDarkTheme=!isDarkTheme;if(isDarkTheme){document.body.classList.add('dark');}else{document.body.classList.remove('dark');}}</script></body></html>";
+        return "<!DOCTYPE html>\n" +
+                "<html>\n" +
+                "<head>\n" +
+                "<meta charset=\"UTF-8\">\n" +
+                "<style>\n" +
+                "* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }\n" +
+                ":root {\n" +
+                "  --bg-primary: #f3f3f3;\n" +
+                "  --bg-secondary: #ffffff;\n" +
+                "  --bg-hover: rgba(0, 153, 168, 0.1);\n" +
+                "  --bg-active: rgba(0, 153, 168, 0.2);\n" +
+                "  --text-primary: #1c1c1c;\n" +
+                "  --text-secondary: #707070;\n" +
+                "  --accent: #0099a8;\n" +
+                "  --accent-hover: #00b8cc;\n" +
+                "  --border: rgba(0, 0, 0, 0.08);\n" +
+                "  --shadow: rgba(0, 0, 0, 0.05);\n" +
+                "}\n" +
+                "body {\n" +
+                "  font-family: 'Segoe UI Variable', 'Segoe UI', 'Segoe UI Emoji', 'Noto Color Emoji', 'Apple Color Emoji', system-ui, sans-serif;\n" +
+                "  background: var(--bg-primary);\n" +
+                "  height: 100vh;\n" +
+                "  overflow: hidden;\n" +
+                "  color: var(--text-primary);\n" +
+                "}\n" +
+                "body.dark {\n" +
+                "  --bg-primary: #202020;\n" +
+                "  --bg-secondary: #2b2b2b;\n" +
+                "  --bg-hover: rgba(0, 153, 168, 0.15);\n" +
+                "  --bg-active: rgba(0, 153, 168, 0.25);\n" +
+                "  --text-primary: #e8e8e8;\n" +
+                "  --text-secondary: #a0a0a0;\n" +
+                "  --border: rgba(255, 255, 255, 0.08);\n" +
+                "  --shadow: rgba(0, 0, 0, 0.3);\n" +
+                "}\n" +
+                ".sidebar {\n" +
+                "  height: 100%;\n" +
+                "  background: var(--bg-secondary);\n" +
+                "  display: flex;\n" +
+                "  flex-direction: column;\n" +
+                "  overflow-y: auto;\n" +
+                "  overflow-x: hidden;\n" +
+                "  border-right: 1px solid var(--border);\n" +
+                "}\n" +
+                ".section {\n" +
+                "  margin: 20px 0 8px 16px;\n" +
+                "  font-size: 11px;\n" +
+                "  font-weight: 600;\n" +
+                "  color: var(--text-secondary);\n" +
+                "  letter-spacing: 0.5px;\n" +
+                "  text-transform: uppercase;\n" +
+                "  opacity: 0;\n" +
+                "  animation: fadeIn 0.4s ease-out forwards;\n" +
+                "}\n" +
+                ".section:nth-child(1) { animation-delay: 0.1s; }\n" +
+                ".section:nth-child(9) { animation-delay: 0.2s; }\n" +
+                ".nav-item {\n" +
+                "  display: flex;\n" +
+                "  align-items: center;\n" +
+                "  padding: 10px 16px;\n" +
+                "  margin: 2px 8px;\n" +
+                "  border-radius: 6px;\n" +
+                "  cursor: pointer;\n" +
+                "  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);\n" +
+                "  position: relative;\n" +
+                "  overflow: hidden;\n" +
+                "  opacity: 0;\n" +
+                "  animation: slideIn 0.4s ease-out forwards;\n" +
+                "}\n" +
+                ".nav-item:nth-child(2) { animation-delay: 0.15s; }\n" +
+                ".nav-item:nth-child(3) { animation-delay: 0.18s; }\n" +
+                ".nav-item:nth-child(4) { animation-delay: 0.21s; }\n" +
+                ".nav-item:nth-child(5) { animation-delay: 0.24s; }\n" +
+                ".nav-item:nth-child(6) { animation-delay: 0.27s; }\n" +
+                ".nav-item:nth-child(7) { animation-delay: 0.30s; }\n" +
+                ".nav-item:nth-child(8) { animation-delay: 0.33s; }\n" +
+                ".nav-item::before {\n" +
+                "  content: '';\n" +
+                "  position: absolute;\n" +
+                "  left: 0;\n" +
+                "  top: 0;\n" +
+                "  bottom: 0;\n" +
+                "  width: 3px;\n" +
+                "  background: var(--accent);\n" +
+                "  transform: scaleY(0);\n" +
+                "  transition: transform 0.2s ease;\n" +
+                "}\n" +
+                ".nav-item:hover {\n" +
+                "  background: var(--bg-hover);\n" +
+                "  transform: translateX(2px);\n" +
+                "}\n" +
+                ".nav-item:hover::before { transform: scaleY(1); }\n" +
+                ".nav-item:active {\n" +
+                "  background: var(--bg-active);\n" +
+                "  transform: translateX(2px) scale(0.98);\n" +
+                "}\n" +
+                ".nav-icon {\n" +
+                "  font-size: 20px;\n" +
+                "  margin-right: 12px;\n" +
+                "  flex-shrink: 0;\n" +
+                "  filter: drop-shadow(0 1px 2px var(--shadow));\n" +
+                "  transition: transform 0.2s ease;\n" +
+                "}\n" +
+                ".nav-item:hover .nav-icon { transform: scale(1.1); }\n" +
+                ".nav-text {\n" +
+                "  font-size: 14px;\n" +
+                "  font-weight: 500;\n" +
+                "  color: var(--text-primary);\n" +
+                "  flex: 1;\n" +
+                "}\n" +
+                "::-webkit-scrollbar { width: 8px; }\n" +
+                "::-webkit-scrollbar-track { background: transparent; }\n" +
+                "::-webkit-scrollbar-thumb {\n" +
+                "  background: rgba(0, 153, 168, 0.3);\n" +
+                "  border-radius: 4px;\n" +
+                "  transition: background 0.2s;\n" +
+                "}\n" +
+                "::-webkit-scrollbar-thumb:hover { background: rgba(0, 153, 168, 0.5); }\n" +
+                "@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }\n" +
+                "@keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }\n" +
+                "</style>\n" +
+                "</head>\n" +
+                "<body>\n" +
+                "<div class=\"sidebar\">\n" +
+                "<div class=\"section\">" + loc.getString("sidebar.quickAccess") + "</div>\n" +
+                "<div class=\"nav-item\" onclick=\"navigate('" + desktopPath + "')\"><span class=\"nav-icon\">&#x1F5A5;</span><span class=\"nav-text\">" + loc.getString("sidebar.desktop") + "</span></div>\n" +
+                "<div class=\"nav-item\" onclick=\"navigate('" + documentsPath + "')\"><span class=\"nav-icon\">&#x1F4C1;</span><span class=\"nav-text\">" + loc.getString("sidebar.documents") + "</span></div>\n" +
+                "<div class=\"nav-item\" onclick=\"navigate('" + picturesPath + "')\"><span class=\"nav-icon\">&#x1F5BC;</span><span class=\"nav-text\">" + loc.getString("sidebar.pictures") + "</span></div>\n" +
+                "<div class=\"nav-item\" onclick=\"navigate('" + downloadsPath + "')\"><span class=\"nav-icon\">&#x1F4E5;</span><span class=\"nav-text\">" + loc.getString("sidebar.downloads") + "</span></div>\n" +
+                "<div class=\"nav-item\" onclick=\"navigate('" + userHome + "\\\\\\\\Music')\"><span class=\"nav-icon\">&#x1F3B5;</span><span class=\"nav-text\">" + loc.getString("sidebar.music") + "</span></div>\n" +
+                "<div class=\"nav-item\" onclick=\"navigate('" + userHome + "\\\\\\\\Videos')\"><span class=\"nav-icon\">&#x1F3AC;</span><span class=\"nav-text\">" + loc.getString("sidebar.videos") + "</span></div>\n" +
+                "<div class=\"nav-item\" onclick=\"navigate('C:\\\\\\\\\\\\\\\\Users')\"><span class=\"nav-icon\">&#x1F465;</span><span class=\"nav-text\">" + loc.getString("sidebar.users") + "</span></div>\n" +
+                "<div class=\"section\">" + loc.getString("sidebar.drives") + "</div>\n" +
+                drivesHtml.toString() +
+                "</div>\n" +
+                "<script>\n" +
+                "let isDarkTheme = false;\n" +
+                "function navigate(path) {\n" +
+                "  console.log('Navigating to:', path);\n" +
+                "  javaBridge.navigateToPath(path);\n" +
+                "}\n" +
+                "function toggleTheme() {\n" +
+                "  isDarkTheme = !isDarkTheme;\n" +
+                "  if (isDarkTheme) {\n" +
+                "    document.body.classList.add('dark');\n" +
+                "  } else {\n" +
+                "    document.body.classList.remove('dark');\n" +
+                "  }\n" +
+                "}\n" +
+                "</script>\n" +
+                "</body>\n" +
+                "</html>";
     }
 
     public class JSBridge {

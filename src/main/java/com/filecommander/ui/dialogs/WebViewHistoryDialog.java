@@ -2,6 +2,7 @@ package com.filecommander.ui.dialogs;
 
 import com.filecommander.model.OperationHistory;
 import com.filecommander.repository.OperationHistoryRepository;
+import com.filecommander.localization.LocalizationManager;
 import javafx.application.Platform;
 import javafx.concurrent.Worker;
 import javafx.scene.Scene;
@@ -19,12 +20,14 @@ public class WebViewHistoryDialog extends Stage {
     private OperationHistoryRepository repository;
     private JSBridge jsBridge;
     private boolean isDarkTheme;
+    private LocalizationManager loc;
 
     public WebViewHistoryDialog(boolean isDarkTheme) {
         this.isDarkTheme = isDarkTheme;
+        this.loc = LocalizationManager.getInstance();
         repository = OperationHistoryRepository.getInstance();
         initializeWebView();
-        setTitle("Operation History");
+        setTitle(loc.getString("history.title"));
     }
 
     private void initializeWebView() {
@@ -58,15 +61,64 @@ public class WebViewHistoryDialog extends Stage {
         root.setCenter(webView);
         root.setStyle(isDarkTheme ? "-fx-background-color: #2b2b2b;" : "-fx-background-color: #ffffff;");
 
-        Scene scene = new Scene(root, 1200, 700);
-
+        Scene scene = new Scene(root, 900, 600);
         scene.setFill(isDarkTheme ? javafx.scene.paint.Color.rgb(43, 43, 43) : javafx.scene.paint.Color.WHITE);
 
         setScene(scene);
-
         initStyle(javafx.stage.StageStyle.UNDECORATED);
+    }
 
-        setMaximized(true);
+    private String getLocalizedStatus(String rawStatus) {
+        if (rawStatus == null) return "";
+        String key = "history.status." + rawStatus;
+        String localized = loc.getString(key);
+        return localized.equals(key) ? rawStatus : localized;
+    }
+
+    private String getLocalizedOperationType(String rawType) {
+        if (rawType == null) return "";
+        String keySuffix = rawType.replace(" ", "");
+        String key = "operation.type." + keySuffix;
+        String localized = loc.getString(key);
+        return localized.equals(key) ? rawType : localized;
+    }
+
+    private String localizeDescription(String desc) {
+        if (desc == null || desc.isEmpty()) return "";
+
+        String currentLang = loc.getCurrentLanguage();
+
+        String[] ukKeys = {
+                "Створено папку", "Створити папку",
+                "Видалити", "Видалено",
+                "Скопіювати", "Скопійовано",
+                "Перемістити", "Переміщено",
+                "Перейменувати", "Перейменовано",
+                "елементів", "елементи", "елемент",
+                "до", "на"
+        };
+
+        String[] enKeys = {
+                "Created folder", "Create folder",
+                "Delete", "Deleted",
+                "Copy", "Copied",
+                "Move", "Moved",
+                "Rename", "Renamed",
+                "items", "items", "item",
+                "to", "to"
+        };
+
+        if ("en".equals(currentLang)) {
+            for (int i = 0; i < ukKeys.length; i++) {
+                desc = desc.replace(ukKeys[i], enKeys[i]);
+            }
+        } else if ("uk".equals(currentLang)) {
+            for (int i = 0; i < enKeys.length; i++) {
+                desc = desc.replace(enKeys[i], ukKeys[i]);
+            }
+        }
+
+        return desc;
     }
 
     private void loadHistory() {
@@ -79,17 +131,20 @@ public class WebViewHistoryDialog extends Stage {
                     OperationHistory op = history.get(i);
                     if (i > 0) jsonBuilder.append(",");
 
+                    String localizedType = getLocalizedOperationType(op.getOperationType());
+                    String localizedStatus = getLocalizedStatus(op.getStatus());
+                    String localizedDesc = localizeDescription(op.getDescription());
+
                     jsonBuilder.append("{")
                             .append("\"id\":").append(op.getId()).append(",")
-                            .append("\"type\":\"").append(escapeJson(op.getOperationType())).append("\",")
-                            .append("\"description\":\"").append(escapeJson(op.getDescription())).append("\",")
+                            .append("\"type\":\"").append(escapeJson(localizedType)).append("\",")
+                            .append("\"description\":\"").append(escapeJson(localizedDesc)).append("\",")
                             .append("\"time\":\"").append(escapeJson(op.getExecutedAt())).append("\",")
-                            .append("\"status\":\"").append(escapeJson(op.getStatus())).append("\"")
+                            .append("\"status\":\"").append(escapeJson(localizedStatus)).append("\"")
                             .append("}");
                 }
 
                 jsonBuilder.append("]");
-
                 String script = "if(typeof updateHistory === 'function') { updateHistory(" + jsonBuilder.toString() + "); }";
                 webEngine.executeScript(script);
             } catch (Exception e) {
@@ -101,7 +156,13 @@ public class WebViewHistoryDialog extends Stage {
 
     private String escapeJson(String str) {
         if (str == null) return "";
+        return str.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
+    }
+
+    private String escapeJs(String str) {
+        if (str == null) return "";
         return str.replace("\\", "\\\\")
+                .replace("'", "\\'")
                 .replace("\"", "\\\"")
                 .replace("\n", "\\n")
                 .replace("\r", "\\r");
@@ -115,40 +176,30 @@ public class WebViewHistoryDialog extends Stage {
                 "<style>" +
                 "* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }" +
                 ":root {" +
-                "  --bg-primary: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 25%, #80deea 50%, #4dd0e1 75%, #26c6da 100%);" +
                 "  --bg-secondary: rgba(255,255,255,0.95);" +
                 "  --bg-card: rgba(255,255,255,0.7);" +
-                "  --bg-hover: rgba(0,153,168,0.08);" +
                 "  --text-primary: #1c1c1c;" +
                 "  --text-secondary: #707070;" +
                 "  --accent: #0099a8;" +
-                "  --accent-gradient: linear-gradient(135deg, #0099a8 0%, #00b8cc 100%);" +
                 "  --border: rgba(0,0,0,0.08);" +
                 "  --shadow: 0 4px 20px rgba(0,0,0,0.15);" +
-                "  --shadow-card: 0 2px 12px rgba(0,0,0,0.08);" +
-                "  --glow: 0 0 20px rgba(0,153,168,0.3);" +
                 "}" +
                 "body.dark {" +
                 "  --bg-secondary: rgba(43,43,43,0.95);" +
                 "  --bg-card: rgba(35,35,35,0.7);" +
-                "  --bg-hover: rgba(0,153,168,0.12);" +
                 "  --text-primary: #e8e8e8;" +
                 "  --text-secondary: #a0a0a0;" +
                 "  --accent: #00d4e6;" +
-                "  --accent-gradient: linear-gradient(135deg, #00d4e6 0%, #00e8ff 100%);" +
                 "  --border: rgba(255,255,255,0.08);" +
                 "  --shadow: 0 4px 20px rgba(0,0,0,0.5);" +
-                "  --shadow-card: 0 2px 12px rgba(0,0,0,0.3);" +
-                "  --glow: 0 0 20px rgba(0,212,230,0.4);" +
                 "}" +
                 "body {" +
-                "  font-family: 'Segoe UI Variable', 'Segoe UI', 'Segoe UI Emoji', system-ui, sans-serif;" +
+                "  font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;" +
                 "  background: transparent;" +
                 "  height: 100vh;" +
                 "  overflow: hidden;" +
                 "  display: flex;" +
                 "  flex-direction: column;" +
-                "  position: relative;" +
                 "  padding: 20px;" +
                 "}" +
                 ".window-container {" +
@@ -161,267 +212,111 @@ public class WebViewHistoryDialog extends Stage {
                 "  flex-direction: column;" +
                 "  overflow: hidden;" +
                 "}" +
-                "body.dark .window-container {" +
-                "  box-shadow: var(--shadow);" +
-                "}" +
                 ".header {" +
                 "  background: var(--bg-secondary);" +
-                "  padding: 28px 40px;" +
+                "  padding: 20px 30px;" +
                 "  border-bottom: 1px solid var(--border);" +
                 "  position: relative;" +
                 "  z-index: 10;" +
-                "  flex-shrink: 0;" +
                 "}" +
                 ".header::after {" +
-                "  content: '';" +
-                "  position: absolute;" +
-                "  bottom: 0;" +
-                "  left: 40px;" +
-                "  right: 40px;" +
-                "  height: 2px;" +
-                "  background: var(--accent);" +
-                "  border-radius: 2px;" +
+                "  content: ''; position: absolute; bottom: 0; left: 30px; right: 30px; height: 2px; background: var(--accent); border-radius: 2px;" +
                 "}" +
-                ".title {" +
-                "  font-size: 28px;" +
-                "  font-weight: 700;" +
-                "  color: var(--text-primary);" +
-                "  margin-bottom: 6px;" +
-                "  letter-spacing: -0.5px;" +
-                "}" +
-                ".subtitle { font-size: 14px; color: var(--text-secondary); font-weight: 500; }" +
+                ".title { font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }" +
+                ".subtitle { font-size: 13px; color: var(--text-secondary); font-weight: 500; }" +
                 ".content {" +
                 "  flex: 1;" +
                 "  overflow-y: auto;" +
-                "  padding: 24px 40px;" +
-                "  position: relative;" +
-                "  z-index: 1;" +
+                "  padding: 20px 30px;" +
                 "}" +
-                ".history-grid {" +
-                "  display: grid;" +
-                "  gap: 12px;" +
-                "}" +
+                ".history-grid { display: grid; gap: 10px; }" +
                 ".history-card {" +
                 "  background: rgba(255,255,255,0.5);" +
-                "  border-radius: 12px;" +
-                "  padding: 18px 22px;" +
+                "  border-radius: 10px;" +
+                "  padding: 15px;" +
                 "  border: 1px solid var(--border);" +
                 "  transition: all 0.2s ease;" +
                 "  position: relative;" +
                 "}" +
-                "body.dark .history-card {" +
-                "  background: rgba(45,45,45,0.5);" +
-                "}" +
-                ".history-card::before {" +
-                "  content: '';" +
-                "  position: absolute;" +
-                "  top: 0;" +
-                "  left: 0;" +
-                "  width: 3px;" +
-                "  height: 100%;" +
-                "  background: var(--accent);" +
-                "  opacity: 0;" +
-                "  transition: opacity 0.2s;" +
-                "}" +
-                ".history-card:hover {" +
-                "  transform: translateX(6px);" +
-                "  border-color: var(--accent);" +
-                "}" +
-                ".history-card:hover::before { opacity: 1; }" +
-                ".card-header {" +
-                "  display: flex;" +
-                "  justify-content: space-between;" +
-                "  align-items: center;" +
-                "  margin-bottom: 16px;" +
-                "}" +
+                "body.dark .history-card { background: rgba(45,45,45,0.5); }" +
+                ".history-card:hover { transform: translateX(4px); border-color: var(--accent); }" +
+                ".card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }" +
                 ".card-id {" +
-                "  font-size: 11px;" +
-                "  font-weight: 700;" +
-                "  color: var(--text-secondary);" +
-                "  text-transform: uppercase;" +
-                "  letter-spacing: 1px;" +
-                "  padding: 4px 12px;" +
-                "  background: rgba(0,153,168,0.1);" +
-                "  border-radius: 20px;" +
-                "  border: 1px solid var(--border);" +
+                "  font-size: 10px; font-weight: 700; color: var(--text-secondary);" +
+                "  padding: 2px 8px; background: rgba(0,153,168,0.1); border-radius: 12px; border: 1px solid var(--border);" +
                 "}" +
                 ".card-status {" +
-                "  font-size: 12px;" +
-                "  font-weight: 700;" +
-                "  color: #10b981;" +
-                "  padding: 6px 16px;" +
-                "  background: linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(16,185,129,0.08) 100%);" +
-                "  border-radius: 20px;" +
-                "  border: 1px solid rgba(16,185,129,0.3);" +
-                "  text-transform: uppercase;" +
-                "  letter-spacing: 0.5px;" +
+                "  font-size: 11px; font-weight: 700; color: #10b981;" +
+                "  padding: 2px 10px; background: rgba(16,185,129,0.1); border-radius: 12px;" +
                 "}" +
                 ".card-type {" +
-                "  font-size: 16px;" +
-                "  font-weight: 700;" +
-                "  color: var(--text-primary);" +
-                "  margin-bottom: 12px;" +
-                "  display: flex;" +
-                "  align-items: center;" +
-                "  gap: 12px;" +
-                "}" +
-                ".card-type-icon {" +
-                "  width: 34px;" +
-                "  height: 34px;" +
-                "  background: var(--accent);" +
-                "  border-radius: 8px;" +
-                "  display: flex;" +
-                "  align-items: center;" +
-                "  justify-content: center;" +
-                "  font-size: 18px;" +
+                "  font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;" +
                 "}" +
                 ".card-description {" +
-                "  font-size: 14px;" +
-                "  color: var(--text-secondary);" +
-                "  line-height: 1.6;" +
-                "  margin-bottom: 16px;" +
-                "  padding-left: 48px;" +
+                "  font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 10px;" +
                 "}" +
                 ".card-footer {" +
-                "  display: flex;" +
-                "  align-items: center;" +
-                "  gap: 8px;" +
-                "  font-size: 12px;" +
-                "  color: var(--text-secondary);" +
-                "  padding-left: 48px;" +
-                "}" +
-                ".card-time {" +
-                "  display: flex;" +
-                "  align-items: center;" +
-                "  gap: 6px;" +
-                "  padding: 4px 12px;" +
-                "  background: var(--bg-hover);" +
-                "  border-radius: 8px;" +
-                "  font-weight: 500;" +
+                "  display: flex; justify-content: flex-end; font-size: 11px; color: var(--text-secondary);" +
                 "}" +
                 ".footer {" +
                 "  background: var(--bg-secondary);" +
-                "  padding: 20px 40px;" +
+                "  padding: 15px 30px;" +
                 "  border-top: 1px solid var(--border);" +
-                "  display: flex;" +
-                "  gap: 12px;" +
-                "  justify-content: flex-end;" +
-                "  position: relative;" +
-                "  z-index: 10;" +
-                "  flex-shrink: 0;" +
+                "  display: flex; gap: 10px; justify-content: flex-end;" +
                 "}" +
                 ".btn {" +
-                "  padding: 11px 28px;" +
-                "  border: none;" +
-                "  border-radius: 10px;" +
-                "  font-size: 14px;" +
-                "  font-weight: 600;" +
-                "  cursor: pointer;" +
-                "  transition: all 0.2s ease;" +
-                "  position: relative;" +
-                "  letter-spacing: 0.3px;" +
+                "  padding: 8px 24px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s;" +
                 "}" +
-                ".btn:hover { transform: translateY(-2px); }" +
-                ".btn:active { transform: translateY(0); }" +
-                ".btn-refresh {" +
-                "  background: var(--accent);" +
-                "  color: white;" +
-                "}" +
-                ".btn-close {" +
-                "  background: var(--bg-card);" +
-                "  color: var(--text-primary);" +
-                "  border: 1px solid var(--border);" +
-                "}" +
-                ".empty-state {" +
-                "  text-align: center;" +
-                "  padding: 80px 40px;" +
-                "  color: var(--text-secondary);" +
-                "}" +
-                ".empty-icon {" +
-                "  font-size: 72px;" +
-                "  margin-bottom: 24px;" +
-                "  opacity: 0.5;" +
-                "}" +
-                ".empty-text {" +
-                "  font-size: 18px;" +
-                "  font-weight: 600;" +
-                "  margin-bottom: 8px;" +
-                "}" +
-                ".empty-subtext {" +
-                "  font-size: 14px;" +
-                "  opacity: 0.7;" +
-                "}" +
-                "::-webkit-scrollbar { width: 12px; }" +
-                "::-webkit-scrollbar-track {" +
-                "  background: transparent;" +
-                "  margin: 8px 0;" +
-                "}" +
-                "::-webkit-scrollbar-thumb {" +
-                "  background: linear-gradient(135deg, rgba(0,153,168,0.3) 0%, rgba(0,184,204,0.3) 100%);" +
-                "  border-radius: 6px;" +
-                "  border: 2px solid transparent;" +
-                "  background-clip: padding-box;" +
-                "}" +
-                "::-webkit-scrollbar-thumb:hover {" +
-                "  background: linear-gradient(135deg, rgba(0,153,168,0.5) 0%, rgba(0,184,204,0.5) 100%);" +
-                "  background-clip: padding-box;" +
-                "}" +
+                ".btn-refresh { background: var(--accent); color: white; }" +
+                ".btn-close { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); }" +
+                ".btn:hover { opacity: 0.9; transform: translateY(-1px); }" +
+                "::-webkit-scrollbar { width: 8px; }" +
+                "::-webkit-scrollbar-track { background: transparent; }" +
+                "::-webkit-scrollbar-thumb { background: rgba(0,153,168,0.3); border-radius: 4px; }" +
                 "</style>" +
                 "</head>" +
                 "<body>" +
                 "<div class=\"window-container\">" +
                 "<div class=\"header\">" +
-                "  <div class=\"title\">Operation History</div>" +
-                "  <div class=\"subtitle\" id=\"subtitle\">Loading...</div>" +
+                "  <div class=\"title\">" + escapeJs(loc.getString("history.title")) + "</div>" +
+                "  <div class=\"subtitle\" id=\"subtitle\">" + escapeJs(loc.getString("history.loading")) + "</div>" +
                 "</div>" +
                 "<div class=\"content\">" +
                 "  <div class=\"history-grid\" id=\"historyGrid\"></div>" +
                 "</div>" +
                 "<div class=\"footer\">" +
-                "  <button class=\"btn btn-refresh\" onclick=\"refresh()\">Refresh</button>" +
-                "  <button class=\"btn btn-close\" onclick=\"closeDialog()\">Close</button>" +
+                "  <button class=\"btn btn-refresh\" onclick=\"refresh()\">" + escapeJs(loc.getString("history.refresh")) + "</button>" +
+                "  <button class=\"btn btn-close\" onclick=\"closeDialog()\">" + escapeJs(loc.getString("history.close")) + "</button>" +
                 "</div>" +
                 "</div>" +
                 "<script>" +
-                "function getOperationIcon(type) {" +
-                "  if (type.includes('Copy')) return 'C';" +
-                "  if (type.includes('Move')) return 'M';" +
-                "  if (type.includes('Delete')) return 'D';" +
-                "  if (type.includes('Folder')) return 'F';" +
-                "  if (type.includes('Rename')) return 'R';" +
-                "  return 'O';" +
-                "}" +
+                "const emptyText = '" + escapeJs(loc.getString("history.empty")) + "';" +
+                "const emptySubtext = '" + escapeJs(loc.getString("history.emptySubtext")) + "';" +
+                "const noOperations = '" + escapeJs(loc.getString("history.noOperations")) + "';" +
+                "const recentOperations = '" + escapeJs(loc.getString("history.recentOperations")) + "';" +
+                "const totalLabel = '" + escapeJs(loc.getString("history.total")) + "';" +
                 "function updateHistory(data) {" +
                 "  const grid = document.getElementById('historyGrid');" +
                 "  const fragment = document.createDocumentFragment();" +
                 "  grid.innerHTML = '';" +
                 "  if (data.length === 0) {" +
-                "    grid.innerHTML = `" +
-                "      <div class=\\\"empty-state\\\">" +
-                "        <div class=\\\"empty-icon\\\">&#128202;</div>" +
-                "        <div class=\\\"empty-text\\\">No operations yet</div>" +
-                "        <div class=\\\"empty-subtext\\\">Your operation history will appear here</div>" +
-                "      </div>" +
-                "    `;" +
+                "    grid.innerHTML = `<div style='text-align:center;padding:40px;color:#888'>${emptyText}<br><small>${emptySubtext}</small></div>`;" +
                 "  } else {" +
                 "    data.forEach(op => {" +
                 "      const card = document.createElement('div');" +
                 "      card.className = 'history-card';" +
-                "      const icon = getOperationIcon(op.type);" +
                 "      card.innerHTML = `" +
                 "        <div class=\\\"card-header\\\">" +
                 "          <div class=\\\"card-id\\\">#${op.id}</div>" +
                 "          <div class=\\\"card-status\\\">${escapeHtml(op.status)}</div>" +
                 "        </div>" +
                 "        <div class=\\\"card-type\\\">" +
-                "          <div class=\\\"card-type-icon\\\">${icon}</div>" +
                 "          <span>${escapeHtml(op.type)}</span>" +
                 "        </div>" +
                 "        <div class=\\\"card-description\\\">${escapeHtml(op.description)}</div>" +
                 "        <div class=\\\"card-footer\\\">" +
                 "          <div class=\\\"card-time\\\">" +
-                "            <span>⏱</span>" +
-                "            <span>${escapeHtml(op.time)}</span>" +
+                "            <span>&#9201; ${escapeHtml(op.time)}</span>" +
                 "          </div>" +
                 "        </div>" +
                 "      `;" +
@@ -429,25 +324,11 @@ public class WebViewHistoryDialog extends Stage {
                 "    });" +
                 "    grid.appendChild(fragment);" +
                 "  }" +
-                "  document.getElementById('subtitle').textContent = " +
-                "    data.length === 0 ? 'No operations recorded' : " +
-                "    `Last 50 Operations: ${data.length} total`;" +
+                "  document.getElementById('subtitle').textContent = data.length === 0 ? noOperations : `${recentOperations}: ${data.length} ${totalLabel}`;" +
                 "}" +
-                "function escapeHtml(text) {" +
-                "  const div = document.createElement('div');" +
-                "  div.textContent = text;" +
-                "  return div.innerHTML;" +
-                "}" +
-                "function refresh() {" +
-                "  if (typeof javaBridge !== 'undefined' && javaBridge.refresh) {" +
-                "    javaBridge.refresh();" +
-                "  }" +
-                "}" +
-                "function closeDialog() {" +
-                "  if (typeof javaBridge !== 'undefined' && javaBridge.close) {" +
-                "    javaBridge.close();" +
-                "  }" +
-                "}" +
+                "function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }" +
+                "function refresh() { javaBridge.refresh(); }" +
+                "function closeDialog() { javaBridge.close(); }" +
                 "</script>" +
                 "</body>" +
                 "</html>";
@@ -455,17 +336,11 @@ public class WebViewHistoryDialog extends Stage {
 
     public class JSBridge {
         public void refresh() {
-            Platform.runLater(() -> {
-                System.out.println("Refresh button clicked");
-                loadHistory();
-            });
+            Platform.runLater(() -> loadHistory());
         }
 
         public void close() {
-            Platform.runLater(() -> {
-                System.out.println("Close button clicked");
-                WebViewHistoryDialog.this.close();
-            });
+            Platform.runLater(() -> WebViewHistoryDialog.this.close());
         }
     }
 }

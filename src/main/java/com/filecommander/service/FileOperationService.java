@@ -94,7 +94,7 @@ public class FileOperationService {
 
             } catch (Exception e) {
                 e.printStackTrace();
-                OperationResult errorResult = OperationResult.error(e.getMessage());
+                OperationResult errorResult = OperationResult.error(e);
                 Platform.runLater(() -> callback.accept(errorResult));
             }
         });
@@ -103,7 +103,7 @@ public class FileOperationService {
     public void undoLastOperation(Consumer<OperationResult> callback) {
         if (commandHistory.isEmpty()) {
             Platform.runLater(() ->
-                    callback.accept(OperationResult.error("No operations to undo")));
+                    callback.accept(OperationResult.error("Немає операцій для скасування")));
             return;
         }
 
@@ -116,7 +116,7 @@ public class FileOperationService {
                 Platform.runLater(() -> callback.accept(result));
             } catch (IOException e) {
                 e.printStackTrace();
-                OperationResult result = OperationResult.error("Undo failed: " + e.getMessage());
+                OperationResult result = OperationResult.error(e);
                 Platform.runLater(() -> callback.accept(result));
             }
         });

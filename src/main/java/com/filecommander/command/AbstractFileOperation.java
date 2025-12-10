@@ -1,5 +1,6 @@
 package com.filecommander.command;
 
+import com.filecommander.localization.LocalizationManager;
 import com.filecommander.model.OperationResult;
 import com.filecommander.repository.OperationHistoryRepository;
 import java.io.IOException;
@@ -17,7 +18,8 @@ public abstract class AbstractFileOperation implements FileCommand {
     public final OperationResult execute() throws IOException {
         try {
             if (!validate()) {
-                String errorMsg = validationError != null ? validationError : "Validation failed";
+                LocalizationManager loc = LocalizationManager.getInstance();
+                String errorMsg = validationError != null ? validationError : loc.getString("error.validation");
                 return OperationResult.error(errorMsg);
             }
 
@@ -40,6 +42,7 @@ public abstract class AbstractFileOperation implements FileCommand {
     }
 
     protected String translateError(IOException e) {
+        LocalizationManager loc = LocalizationManager.getInstance();
         String message = e.getMessage();
 
         if (message != null && message.contains("A required privilege is not held by the client")) {
@@ -47,19 +50,17 @@ public abstract class AbstractFileOperation implements FileCommand {
             String pathStr = targetPath != null ? targetPath.toString() : "";
 
             if (pathStr.startsWith("C:\\") && !pathStr.startsWith("C:\\Users\\")) {
-                return "Access Error: Cannot write to system folder " + pathStr + ". " +
-                        "Please select another folder or run as administrator.";
+                return loc.getString("error.accessDeniedSystem", pathStr);
             }
 
-            return "Access Error: Cannot write to folder " + pathStr + ". " +
-                    "Please select another folder or check permissions.";
+            return loc.getString("error.accessDeniedFolder", pathStr);
         }
 
         if (message != null && message.contains("Access is denied")) {
-            return "Access Denied. Please check the permissions for the file or folder.";
+            return loc.getString("error.accessDeniedGeneral");
         }
 
-        return message != null ? message : "An unknown error occurred during the operation";
+        return message != null ? message : loc.getString("error.unknownOperation");
     }
 
     protected abstract void performOperation() throws IOException;

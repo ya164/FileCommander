@@ -1,5 +1,6 @@
 package com.filecommander.command;
 
+import com.filecommander.localization.LocalizationManager;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,19 +18,20 @@ public class CreateFolderCommand extends AbstractFileOperation {
 
     @Override
     protected boolean validate() {
+        LocalizationManager loc = LocalizationManager.getInstance();
         if (Files.exists(folderPath)) {
-            validationError = "Folder already exists: " + folderPath.getFileName();
+            validationError = loc.getString("error.folderExists", folderPath.getFileName());
             return false;
         }
 
         Path parent = folderPath.getParent();
         if (parent == null || !Files.exists(parent)) {
-            validationError = "Parent folder does not exist";
+            validationError = loc.getString("error.parentNotExist");
             return false;
         }
 
         if (!Files.isWritable(parent)) {
-            validationError = "No write permission for parent folder";
+            validationError = loc.getString("error.noWriteParent");
             return false;
         }
 
@@ -44,13 +46,14 @@ public class CreateFolderCommand extends AbstractFileOperation {
 
     @Override
     public void undo() throws IOException {
+        LocalizationManager loc = LocalizationManager.getInstance();
         if (Files.exists(folderPath) && Files.isDirectory(folderPath)) {
             if (Files.list(folderPath).findAny().isEmpty()) {
                 Files.delete(folderPath);
                 System.out.println("Undo: Folder deleted: " + folderPath);
             } else {
                 System.err.println("Cannot undo: Folder is not empty: " + folderPath);
-                throw new IOException("Cannot delete non-empty folder: " + folderPath.getFileName());
+                throw new IOException(loc.getString("error.cannotDeleteNonEmpty", folderPath.getFileName()));
             }
         } else {
             System.err.println("Cannot undo: Folder does not exist: " + folderPath);
@@ -59,7 +62,7 @@ public class CreateFolderCommand extends AbstractFileOperation {
 
     @Override
     public String getDescription() {
-        return "Create folder: " + folderPath.getFileName();
+        return LocalizationManager.getInstance().getString("operation.description.createFolder", folderPath.getFileName());
     }
 
     @Override

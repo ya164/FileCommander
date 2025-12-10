@@ -1,5 +1,6 @@
 package com.filecommander.command;
 
+import com.filecommander.localization.LocalizationManager;
 import com.filecommander.service.FileOperationService;
 
 import java.io.IOException;
@@ -24,15 +25,16 @@ public class CopyCommand extends AbstractFileOperation {
 
     @Override
     protected boolean validate() {
+        LocalizationManager loc = LocalizationManager.getInstance();
         for (Path source : sources) {
             if (!Files.exists(source)) {
-                validationError = "Source file does not exist: " + source.getFileName();
+                validationError = loc.getString("error.fileNotExist", source.getFileName());
                 return false;
             }
             if (Files.isDirectory(source)) {
                 try {
                     if (destination.startsWith(source)) {
-                        validationError = "Cannot copy folder into itself: " + source.getFileName();
+                        validationError = loc.getString("error.folderSame", source.getFileName());
                         return false;
                     }
                 } catch (Exception e) {
@@ -40,15 +42,15 @@ public class CopyCommand extends AbstractFileOperation {
             }
         }
         if (!Files.exists(destination)) {
-            validationError = "Destination folder does not exist: " + destination;
+            validationError = loc.getString("error.destNotExist", destination);
             return false;
         }
         if (!Files.isDirectory(destination)) {
-            validationError = "Destination is not a folder: " + destination.getFileName();
+            validationError = loc.getString("error.destNotFolder", destination.getFileName());
             return false;
         }
         if (!Files.isWritable(destination)) {
-            validationError = "No write permission for destination folder: " + destination.getFileName();
+            validationError = loc.getString("error.noWriteAccess", destination.getFileName());
             return false;
         }
         return true;
@@ -58,8 +60,8 @@ public class CopyCommand extends AbstractFileOperation {
     protected void prepare() {
         super.prepare();
         try {
+            FileOperationService.getInstance().notifyStatus(LocalizationManager.getInstance().getString("operation.countingFiles"));
             totalFiles = countFiles();
-            FileOperationService.getInstance().notifyStatus("Counting files...");
         } catch (IOException e) {
             totalFiles = sources.size();
         }
@@ -92,11 +94,11 @@ public class CopyCommand extends AbstractFileOperation {
     @Override
     protected void performOperation() throws IOException {
         FileOperationService service = FileOperationService.getInstance();
-        service.notifyStatus("Copying files...");
+        service.notifyStatus(LocalizationManager.getInstance().getString("operation.copying"));
 
         for (Path source : sources) {
             if (service.isCancelled()) {
-                throw new IOException("Operation cancelled by user");
+                throw new IOException(LocalizationManager.getInstance().getString("operation.cancelled"));
             }
 
             Path targetPath = getUniqueTargetPathWithCopySuffix(source);
@@ -129,14 +131,19 @@ public class CopyCommand extends AbstractFileOperation {
             baseName = fileName;
         }
 
-        Path targetPath = destination.resolve(baseName + " - Copy" + extension);
+        String suffix = " - Copy";
+        if (LocalizationManager.getInstance().getCurrentLanguage().equals("uk")) {
+            suffix = " - Копія";
+        }
+
+        Path targetPath = destination.resolve(baseName + suffix + extension);
         if (!Files.exists(targetPath)) {
             return targetPath;
         }
 
         int counter = 2;
         while (counter < 10000) {
-            targetPath = destination.resolve(baseName + " - Copy (" + counter + ")" + extension);
+            targetPath = destination.resolve(baseName + suffix + " (" + counter + ")" + extension);
             if (!Files.exists(targetPath)) {
                 return targetPath;
             }
@@ -144,7 +151,7 @@ public class CopyCommand extends AbstractFileOperation {
         }
 
         long timestamp = System.currentTimeMillis();
-        return destination.resolve(baseName + " - Copy (" + timestamp + ")" + extension);
+        return destination.resolve(baseName + suffix + " (" + timestamp + ")" + extension);
     }
 
     private void copyFile(Path source, Path target) throws IOException {
@@ -192,10 +199,11 @@ public class CopyCommand extends AbstractFileOperation {
 
     @Override
     public String getDescription() {
+        LocalizationManager loc = LocalizationManager.getInstance();
         if (addCopySuffix && sources.size() == 1) {
-            return "Create and copy " + sources.get(0).getFileName();
+            return loc.getString("operation.description.copyOne", sources.get(0).getFileName());
         }
-        return "Copy " + sources.size() + " file(s) to " + destination;
+        return loc.getString("operation.description.copy", sources.size(), destination);
     }
 
     @Override
@@ -245,7 +253,7 @@ public class CopyCommand extends AbstractFileOperation {
                 try {
                     path.toFile().setWritable(true);
                     if (!path.toFile().delete()) {
-                        throw new IOException("Cannot delete locked or read-only file: " + path, e);
+                        throw new IOException(LocalizationManager.getInstance().getString("error.deleteLocked", path), e);
                     }
                 } catch (Exception ex2) {
                     throw e;

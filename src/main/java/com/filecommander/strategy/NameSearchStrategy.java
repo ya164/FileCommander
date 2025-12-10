@@ -81,7 +81,7 @@ public class NameSearchStrategy implements SearchStrategy {
                 }
             });
         } catch (IOException e) {
-            System.err.println("Search failed: " + e.getMessage());
+            System.err.println("Помилка пошуку: " + e.getMessage());
         }
 
         return results;

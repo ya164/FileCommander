@@ -1,5 +1,6 @@
 package com.filecommander.controller;
 
+import com.filecommander.localization.LocalizationManager;
 import com.filecommander.model.FileItem;
 import com.filecommander.model.OperationResult;
 import com.filecommander.observer.FileSystemEvent;
@@ -114,10 +115,11 @@ public class FileController {
     }
 
     public void showCopyDestinationMenu(FXFilePanel sourcePanel) {
+        LocalizationManager loc = LocalizationManager.getInstance();
         List<FileItem> selectedFiles = sourcePanel.getSelectedFiles();
 
         if (selectedFiles.isEmpty()) {
-            showWarningDialog("No files selected");
+            showWarningDialog(loc.getString("warning.noSelection"));
             return;
         }
 
@@ -173,7 +175,9 @@ public class FileController {
     }
 
     private void executeCopyWithProgress(List<Path> sources, Path destination, boolean addCopySuffix) {
-        progressDialog = new WebViewProgressDialog("Copying Files", mainWindow.isDarkTheme());
+        LocalizationManager loc = LocalizationManager.getInstance();
+
+        progressDialog = new WebViewProgressDialog(loc.getString("operation.copying"), mainWindow.isDarkTheme());
         progressDialog.setOnCancel(() -> operationService.cancelCurrentOperation());
 
         operationService.setProgressCallback(new FileOperationService.ProgressCallback() {
@@ -210,9 +214,10 @@ public class FileController {
     }
 
     public void executeMoveOperationDirect(List<Path> sources, Path destination) {
+        LocalizationManager loc = LocalizationManager.getInstance();
         FXFilePanel originalActivePanel = mainWindow != null ? mainWindow.getActivePanel() : null;
 
-        progressDialog = new WebViewProgressDialog("Moving Files", mainWindow.isDarkTheme());
+        progressDialog = new WebViewProgressDialog(loc.getString("operation.moving"), mainWindow.isDarkTheme());
         progressDialog.setOnCancel(() -> operationService.cancelCurrentOperation());
 
         operationService.setProgressCallback(new FileOperationService.ProgressCallback() {
@@ -254,9 +259,10 @@ public class FileController {
     }
 
     public void executeMoveDirect(List<Path> sources, Path destination, FXFilePanel sourcePanel) {
+        LocalizationManager loc = LocalizationManager.getInstance();
         FXFilePanel originalActivePanel = mainWindow != null ? mainWindow.getActivePanel() : null;
 
-        progressDialog = new WebViewProgressDialog("Moving Files", mainWindow.isDarkTheme());
+        progressDialog = new WebViewProgressDialog(loc.getString("operation.moving"), mainWindow.isDarkTheme());
         progressDialog.setOnCancel(() -> operationService.cancelCurrentOperation());
 
         operationService.setProgressCallback(new FileOperationService.ProgressCallback() {
@@ -294,9 +300,11 @@ public class FileController {
     }
 
     public void initiateMoveOperation(FXFilePanel sourcePanel) {
+        LocalizationManager loc = LocalizationManager.getInstance();
         List<FileItem> selectedFiles = sourcePanel.getSelectedFiles();
+
         if (selectedFiles.isEmpty()) {
-            showWarningDialog("No files selected");
+            showWarningDialog(loc.getString("warning.noSelection"));
             return;
         }
 
@@ -304,7 +312,7 @@ public class FileController {
         Path otherPanelPath = getDestinationPath(sourcePanel);
 
         if (currentFolderPath.equals(otherPanelPath)) {
-            showWarningDialog("Cannot move files to the same folder");
+            showWarningDialog(loc.getString("warning.cannotMoveSameFolder"));
             return;
         }
 
@@ -316,16 +324,19 @@ public class FileController {
     }
 
     public void initiateDeleteOperation(FXFilePanel sourcePanel) {
+        LocalizationManager loc = LocalizationManager.getInstance();
         List<FileItem> selectedFiles = sourcePanel.getSelectedFiles();
+
         if (selectedFiles.isEmpty()) {
-            showWarningDialog("No files selected");
+            showWarningDialog(loc.getString("warning.noSelection"));
             return;
         }
 
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
-        confirmAlert.setTitle("Confirm Delete");
+        mainWindow.setIconForDialog(confirmAlert);
+        confirmAlert.setTitle(loc.getString("dialog.confirmDelete"));
         confirmAlert.setHeaderText(null);
-        confirmAlert.setContentText("Are you sure you want to delete " + selectedFiles.size() + " item(s)?");
+        confirmAlert.setContentText(loc.getString("dialog.confirmDeleteMessage", selectedFiles.size()));
 
         Optional<ButtonType> result = confirmAlert.showAndWait();
         if (result.isEmpty() || result.get() != ButtonType.OK) {
@@ -338,7 +349,7 @@ public class FileController {
 
         FXFilePanel originalActivePanel = mainWindow.getActivePanel();
 
-        progressDialog = new WebViewProgressDialog("Deleting Files", mainWindow.isDarkTheme());
+        progressDialog = new WebViewProgressDialog(loc.getString("operation.deleting"), mainWindow.isDarkTheme());
         progressDialog.setOnCancel(() -> operationService.cancelCurrentOperation());
 
         operationService.setProgressCallback(new FileOperationService.ProgressCallback() {
@@ -376,18 +387,58 @@ public class FileController {
 
     private void handleOperationComplete(OperationResult result) {
         if (!result.isSuccess()) {
-            if (!result.getMessage().contains("cancelled")) {
-                showErrorDialog("Operation Failed", result.getMessage());
+            if (result.getMessage() != null &&
+                    (result.getMessage().contains("скасовано") || result.getMessage().contains("cancelled"))) {
+                return;
             }
+
+            LocalizationManager loc = LocalizationManager.getInstance();
+            String title = loc.getString("dialog.error");
+            String message = result.getMessage(); // Дефолтне
+
+            if (result.getError() != null) {
+                Exception e = result.getError();
+
+                if (e instanceof java.nio.file.AccessDeniedException) {
+                    String file = ((java.nio.file.AccessDeniedException) e).getFile();
+
+                    if (file == null || file.isEmpty()) {
+                        if (result.getAffectedPaths() != null && !result.getAffectedPaths().isEmpty()) {
+                            file = result.getAffectedPaths().get(0).toString();
+                        } else {
+                            file = "C:\\";
+                        }
+                    }
+
+                    boolean isSystemFolder = file != null && (file.endsWith(":\\") || file.equals("/") || file.contains("Windows") || file.contains("Program Files"));
+
+                    if (isSystemFolder) {
+                        message = loc.getString("error.accessDeniedSystem", file);
+                    } else {
+                        message = loc.getString("error.accessDeniedDetails", file);
+                    }
+                } else if (e instanceof java.nio.file.FileAlreadyExistsException) {
+                    message = loc.getString("error.fileAlreadyExists", ((java.nio.file.FileAlreadyExistsException) e).getFile());
+                } else if (e instanceof java.nio.file.NoSuchFileException) {
+                    message = loc.getString("error.fileNotFound", ((java.nio.file.NoSuchFileException) e).getFile());
+                } else if (e instanceof java.nio.file.DirectoryNotEmptyException) {
+                    message = loc.getString("error.notEmpty", ((java.nio.file.DirectoryNotEmptyException) e).getFile());
+                } else if (e instanceof IOException) {
+                    message = loc.getString("error.io", e.getMessage());
+                }
+            }
+
+            showErrorDialog(title, message);
         }
     }
 
     public void createFolderWithName(FXFilePanel panel, String folderName) {
+        LocalizationManager loc = LocalizationManager.getInstance();
         Path currentPath = panel.getCurrentPath();
         Path newFolderPath = currentPath.resolve(folderName);
 
         if (Files.exists(newFolderPath)) {
-            showWarningDialog("A folder with this name already exists");
+            showWarningDialog(loc.getString("warning.fileExists"));
             refreshAllPanels();
             return;
         }
@@ -401,15 +452,13 @@ public class FileController {
                             new Thread(() -> {
                                 try {
                                     Thread.sleep(300);
-                                    Platform.runLater(() -> {
-                                        panel.selectFileByName(folderName);
-                                    });
+                                    Platform.runLater(() -> panel.selectFileByName(folderName));
                                 } catch (InterruptedException e) {
                                     e.printStackTrace();
                                 }
                             }).start();
                         } else {
-                            showErrorDialog("Create Folder Failed", result.getMessage());
+                            handleOperationComplete(result);
                             refreshAllPanels();
                         }
                     });
@@ -418,8 +467,9 @@ public class FileController {
     }
 
     public void executeRenameOperation(Path oldPath, Path newPath) {
+        LocalizationManager loc = LocalizationManager.getInstance();
         if (Files.exists(newPath)) {
-            showWarningDialog("A file or folder with this name already exists");
+            showWarningDialog(loc.getString("warning.fileExists"));
             refreshAllPanels();
             return;
         }
@@ -449,7 +499,7 @@ public class FileController {
                                 }
                             }).start();
                         } else {
-                            showErrorDialog("Rename Failed", result.getMessage());
+                            handleOperationComplete(result);
                             refreshAllPanels();
                         }
                     });
@@ -468,8 +518,9 @@ public class FileController {
     }
 
     public void pasteFromClipboard(FXFilePanel targetPanel) {
+        LocalizationManager loc = LocalizationManager.getInstance();
         if (clipboard.isEmpty()) {
-            showWarningDialog("Clipboard is empty");
+            showWarningDialog(loc.getString("warning.bufferEmpty"));
             return;
         }
 
@@ -506,23 +557,25 @@ public class FileController {
     }
 
     public void openSearchDialog() {
+        LocalizationManager loc = LocalizationManager.getInstance();
         boolean isDarkTheme = mainWindow != null && mainWindow.isDarkTheme();
+
         WebViewSearchDialog dialog = new WebViewSearchDialog((searchParams, panelChoice) -> {
             String criteria = searchParams.getCriteria();
             if (criteria == null || criteria.trim().isEmpty()) {
-                showWarningDialog("Please enter search criteria");
+                showWarningDialog(loc.getString("search.enterCriteria"));
                 return;
             }
 
             FXFilePanel targetPanel = getTargetPanel(panelChoice);
             if (targetPanel == null) {
-                showWarningDialog("Cannot determine target panel");
+                showWarningDialog(loc.getString("search.cannotDetermine"));
                 return;
             }
 
-            WebViewProgressDialog searchProgress = new WebViewProgressDialog("Searching Files", isDarkTheme);
+            WebViewProgressDialog searchProgress = new WebViewProgressDialog(loc.getString("search.title"), isDarkTheme);
             searchProgress.setSearchMode(true);
-            searchProgress.setStatus("Searching for: " + criteria);
+            searchProgress.setStatus(loc.getString("search.search") + ": " + criteria);
             searchProgress.setOnCancel(() -> searchService.cancelCurrentSearch());
             searchProgress.show();
 
@@ -544,14 +597,15 @@ public class FileController {
                 });
             }).start();
         }, isDarkTheme);
+
+        mainWindow.setIconForStage(dialog);
         dialog.show();
     }
 
-
-
     public void executeDirectRename(Path oldPath, Path newPath) {
+        LocalizationManager loc = LocalizationManager.getInstance();
         if (Files.exists(newPath)) {
-            showWarningDialog("A file or folder with this name already exists");
+            showWarningDialog(loc.getString("warning.fileExists"));
             refreshAllPanels();
             return;
         }
@@ -584,7 +638,14 @@ public class FileController {
                 }).start();
             });
         } catch (IOException e) {
-            showErrorDialog("Rename Failed", e.getMessage());
+            String message = e.getMessage();
+            if (e instanceof java.nio.file.AccessDeniedException) {
+                message = loc.getString("error.accessDeniedDetails", newPath.toString());
+            } else if (e instanceof java.nio.file.FileAlreadyExistsException) {
+                message = loc.getString("warning.fileExists");
+            }
+
+            showErrorDialog(loc.getString("operation.renameFailed"), message);
             refreshAllPanels();
         }
     }
@@ -687,10 +748,11 @@ public class FileController {
     }
 
     public void undoLastOperation() {
+        LocalizationManager loc = LocalizationManager.getInstance();
         System.out.println("=== UNDO REQUESTED ===");
 
-        progressDialog = new WebViewProgressDialog("Undoing Operation", mainWindow.isDarkTheme());
-        progressDialog.setStatus("Preparing undo...");
+        progressDialog = new WebViewProgressDialog(loc.getString("operation.undoing"), mainWindow.isDarkTheme());
+        progressDialog.setStatus(loc.getString("progress.preparing"));
         progressDialog.setOnCancel(() -> operationService.cancelCurrentOperation());
 
         operationService.setProgressCallback(new FileOperationService.ProgressCallback() {
@@ -718,18 +780,15 @@ public class FileController {
 
                 if (result.isSuccess()) {
                     System.out.println("=== UNDO SUCCESSFUL ===");
-
                     if (mainWindow != null) {
-                        // Обновляем панели
                         checkAndFixPanelPaths(mainWindow.getLeftPanel());
                         checkAndFixPanelPaths(mainWindow.getRightPanel());
                     }
-
                     refreshAllPanels();
-                    showInfoDialog("Undo", "Operation undone successfully");
+                    showInfoDialog(loc.getString("dialog.info"), loc.getString("operation.undoSuccess"));
                 } else {
                     System.err.println("=== UNDO FAILED: " + result.getMessage() + " ===");
-                    showErrorDialog("Undo Failed", result.getMessage());
+                    showErrorDialog(loc.getString("operation.undoFailed"), result.getMessage());
                 }
             });
         });
@@ -764,8 +823,11 @@ public class FileController {
     }
 
     public void createDefaultFolder(FXFilePanel panel) {
+        LocalizationManager loc = LocalizationManager.getInstance();
         Path currentPath = panel.getCurrentPath();
-        String baseName = "New folder";
+
+        String baseName = loc.getString("toolbar.newFolder");
+
         Path newFolderPath = currentPath.resolve(baseName);
         int counter = 2;
 
@@ -783,10 +845,9 @@ public class FileController {
                     Platform.runLater(() -> {
                         if (result.isSuccess()) {
                             refreshAllPanels();
-
                             panel.selectAndEditFile(folderName);
                         } else {
-                            showErrorDialog("Create Folder Failed", result.getMessage());
+                            showErrorDialog(loc.getString("operation.createFolderFailed"), result.getMessage());
                         }
                     });
                 }
@@ -802,15 +863,11 @@ public class FileController {
     }
 
     private void showErrorDialog(String title, String message) {
+        if (title == null || title.isEmpty()) {
+            title = LocalizationManager.getInstance().getString("dialog.error");
+        }
         Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
-
-    private void showInfoDialog(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        mainWindow.setIconForDialog(alert);
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
@@ -818,8 +875,19 @@ public class FileController {
     }
 
     private void showWarningDialog(String message) {
+        LocalizationManager loc = LocalizationManager.getInstance();
         Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle("Warning");
+        mainWindow.setIconForDialog(alert);
+        alert.setTitle(loc.getString("dialog.warning"));
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private void showInfoDialog(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        mainWindow.setIconForDialog(alert);
+        alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();

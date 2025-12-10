@@ -1,11 +1,14 @@
 package com.filecommander.ui;
 
 import com.filecommander.controller.FileController;
+import com.filecommander.localization.LocalizationManager;
 import com.filecommander.repository.SettingsRepository;
 import javafx.application.Platform;
 import javafx.geometry.Orientation;
 import javafx.scene.Scene;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.SplitPane;
+import javafx.scene.image.Image;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.*;
@@ -19,12 +22,23 @@ public class MainWindow {
     private WebViewSidebar sidebar;
     private boolean isDarkTheme = false;
     private SettingsRepository settingsRepository;
+    private Image appIcon;
 
     public void start(Stage primaryStage) {
         settingsRepository = SettingsRepository.getInstance();
 
+        try {
+            appIcon = new Image(getClass().getResourceAsStream("/icon.png"));
+        } catch (Exception e) {
+            System.err.println("Icon not found: " + e.getMessage());
+        }
+
         isDarkTheme = settingsRepository.isDarkTheme();
         System.out.println("Starting application with theme: " + (isDarkTheme ? "dark" : "light"));
+
+        String savedLanguage = settingsRepository.getLanguage();
+        LocalizationManager.getInstance().setLanguage(savedLanguage);
+        System.out.println("Starting application with language: " + savedLanguage);
 
         BorderPane root = new BorderPane();
 
@@ -63,13 +77,31 @@ public class MainWindow {
 
         Platform.runLater(() -> {
             applyThemeToAllComponents();
-
             activatePanel(leftPanel);
             System.out.println("All panels loaded successfully");
             System.out.println("Initial path: C:\\");
         });
 
         FileController.getInstance().setMainWindow(this);
+    }
+
+    public void setIconForDialog(Dialog<?> dialog) {
+        if (appIcon != null) {
+            Platform.runLater(() -> {
+                try {
+                    Stage stage = (Stage) dialog.getDialogPane().getScene().getWindow();
+                    stage.getIcons().add(appIcon);
+                } catch (Exception e) {
+                    System.err.println("Could not set dialog icon: " + e.getMessage());
+                }
+            });
+        }
+    }
+
+    public void setIconForStage(Stage stage) {
+        if (appIcon != null) {
+            stage.getIcons().add(appIcon);
+        }
     }
 
     private void setupGlobalHotkeys(Scene scene) {
@@ -94,6 +126,10 @@ public class MainWindow {
                         break;
                     case T:
                         toggleTheme();
+                        event.consume();
+                        break;
+                    case L:
+                        changeLanguage();
                         event.consume();
                         break;
                     case F:
@@ -167,6 +203,48 @@ public class MainWindow {
         BorderPane root = (BorderPane) leftPanel.getScene().getRoot();
         applyBackgroundTheme(root);
         applyThemeToAllComponents();
+    }
+
+    public void changeLanguage() {
+        LocalizationManager locManager = LocalizationManager.getInstance();
+        String currentLang = locManager.getCurrentLanguage();
+
+        String newLang = currentLang.equals("uk") ? "en" : "uk";
+
+        locManager.setLanguage(newLang);
+        settingsRepository.saveLanguage(newLang);
+
+        System.out.println("Language changed to: " + newLang);
+
+        Platform.runLater(() -> {
+            if (toolbar != null) toolbar.updateLanguage();
+            if (sidebar != null) sidebar.updateLanguage();
+
+            if (leftPanel != null) leftPanel.updateLanguage();
+            if (rightPanel != null) rightPanel.updateLanguage();
+        });
+    }
+
+    private void applyLanguageToAllComponents() {
+        Platform.runLater(() -> {
+            if (toolbar != null) {
+                toolbar.updateLanguage();
+            }
+
+            if (sidebar != null) {
+                sidebar.updateLanguage();
+            }
+
+            if (leftPanel != null) {
+                leftPanel.refreshFileList();
+            }
+
+            if (rightPanel != null) {
+                rightPanel.refreshFileList();
+            }
+
+            System.out.println("All components updated with new language");
+        });
     }
 
     private void applyBackgroundTheme(BorderPane root) {

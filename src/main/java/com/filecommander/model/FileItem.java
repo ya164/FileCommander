@@ -1,5 +1,7 @@
 package com.filecommander.model;
 
+import com.filecommander.localization.LocalizationManager;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,16 +17,19 @@ public class FileItem implements Comparable<FileItem> {
     private LocalDateTime lastModified;
     private boolean isDirectory;
     private boolean isHidden;
-    private String type;
 
     public static FileItem from(Path path) {
         try {
             BasicFileAttributes attrs = Files.readAttributes(path, BasicFileAttributes.class);
-            boolean hidden = Files.isHidden(path);
+            boolean hidden = false;
+            try {
+                hidden = Files.isHidden(path);
+            } catch (IOException ignored) {
+            }
 
             return new FileItem(
                     path,
-                    path.getFileName().toString(),
+                    path.getFileName() != null ? path.getFileName().toString() : path.toString(),
                     attrs.size(),
                     LocalDateTime.ofInstant(
                             attrs.lastModifiedTime().toInstant(),
@@ -46,55 +51,65 @@ public class FileItem implements Comparable<FileItem> {
         this.lastModified = lastModified;
         this.isDirectory = isDirectory;
         this.isHidden = isHidden;
-        this.type = determineType();
     }
 
-    private String determineType() {
+    public String getType() {
+        LocalizationManager loc = LocalizationManager.getInstance();
+
         if (isDirectory) {
-            return "Folder";
+            return loc.getString("type.folder");
         }
 
         String fileName = name.toLowerCase();
-        if (fileName.endsWith(".txt")) return "Text File";
-        if (fileName.endsWith(".pdf")) return "PDF Document";
+        if (fileName.endsWith(".txt")) return loc.getString("type.textFile");
+        if (fileName.endsWith(".pdf")) return loc.getString("type.pdfDocument");
         if (fileName.endsWith(".jpg") || fileName.endsWith(".png") ||
-                fileName.endsWith(".gif") || fileName.endsWith(".bmp")) return "Image";
+                fileName.endsWith(".gif") || fileName.endsWith(".bmp")) return loc.getString("type.image");
         if (fileName.endsWith(".mp3") || fileName.endsWith(".wav") ||
-                fileName.endsWith(".flac")) return "Audio";
+                fileName.endsWith(".flac")) return loc.getString("type.audio");
         if (fileName.endsWith(".mp4") || fileName.endsWith(".avi") ||
-                fileName.endsWith(".mkv")) return "Video";
+                fileName.endsWith(".mkv")) return loc.getString("type.video");
         if (fileName.endsWith(".zip") || fileName.endsWith(".rar") ||
-                fileName.endsWith(".7z") || fileName.endsWith(".tar")) return "Archive";
-        if (fileName.endsWith(".exe") || fileName.endsWith(".msi")) return "Application";
-        if (fileName.endsWith(".java")) return "Java Source";
-        if (fileName.endsWith(".xml") || fileName.endsWith(".json")) return "Data File";
+                fileName.endsWith(".7z") || fileName.endsWith(".tar")) return loc.getString("type.archive");
+        if (fileName.endsWith(".exe") || fileName.endsWith(".msi")) return loc.getString("type.program");
+        if (fileName.endsWith(".java")) return loc.getString("type.javaCode");
+        if (fileName.endsWith(".xml") || fileName.endsWith(".json")) return loc.getString("type.dataFile");
 
-        return "File";
+        return loc.getString("type.file");
     }
 
     public String getIcon() {
-        if (isDirectory) return "\uD83D\uDCC1"; // 📁
+        if (isDirectory) return "\uD83D\uDCC1";
 
         String fileName = name.toLowerCase();
-        if (fileName.endsWith(".txt")) return "\uD83D\uDCC4"; // 📄
-        if (fileName.endsWith(".pdf")) return "\uD83D\uDCD5"; // 📕
-        if (fileName.endsWith(".jpg") || fileName.endsWith(".png")) return "\uD83D\uDDBC\uFE0F"; // 🖼️
-        if (fileName.endsWith(".mp3") || fileName.endsWith(".wav")) return "\uD83C\uDFB5"; // 🎵
-        if (fileName.endsWith(".mp4") || fileName.endsWith(".avi")) return "\uD83C\uDFAC"; // 🎬
-        if (fileName.endsWith(".zip") || fileName.endsWith(".rar")) return "\uD83D\uDCE6"; // 📦
-        if (fileName.endsWith(".exe")) return "\u2699\uFE0F"; // ⚙️
-        if (fileName.endsWith(".java")) return "\u2615"; // ☕
+        if (fileName.endsWith(".txt")) return "\uD83D\uDCC4";
+        if (fileName.endsWith(".pdf")) return "\uD83D\uDCD5";
+        if (fileName.endsWith(".jpg") || fileName.endsWith(".png")) return "\uD83D\uDDBC";
+        if (fileName.endsWith(".mp3") || fileName.endsWith(".wav")) return "\uD83C\uDFB5";
+        if (fileName.endsWith(".mp4") || fileName.endsWith(".avi")) return "\uD83C\uDFAC";
+        if (fileName.endsWith(".zip") || fileName.endsWith(".rar")) return "\uD83D\uDCE6";
+        if (fileName.endsWith(".exe")) return "\u2699\uFE0F";
+        if (fileName.endsWith(".java")) return "\u2615";
 
-        return "\uD83D\uDCC4"; // 📄
+        return "\uD83D\uDCC4";
     }
 
     public String getFormattedSize() {
-        if (isDirectory) return "<DIR>";
+        LocalizationManager loc = LocalizationManager.getInstance();
 
-        if (size < 1024) return size + " B";
-        if (size < 1024 * 1024) return String.format("%.1f KB", size / 1024.0);
-        if (size < 1024 * 1024 * 1024) return String.format("%.1f MB", size / (1024.0 * 1024));
-        return String.format("%.1f GB", size / (1024.0 * 1024 * 1024));
+        if (isDirectory) return loc.getString("size.folder");
+
+        if (size < 1024) return size + " " + loc.getString("size.bytes");
+
+        if (size < 1024 * 1024) {
+            return String.format("%.1f %s", size / 1024.0, loc.getString("size.kb"));
+        }
+
+        if (size < 1024 * 1024 * 1024) {
+            return String.format("%.1f %s", size / (1024.0 * 1024), loc.getString("size.mb"));
+        }
+
+        return String.format("%.1f %s", size / (1024.0 * 1024 * 1024), loc.getString("size.gb"));
     }
 
     public String getFormattedDate() {
@@ -109,12 +124,10 @@ public class FileItem implements Comparable<FileItem> {
         return this.name.compareToIgnoreCase(other.name);
     }
 
-    // Getters
     public Path getPath() { return path; }
     public String getName() { return name; }
     public long getSize() { return size; }
     public LocalDateTime getLastModified() { return lastModified; }
     public boolean isDirectory() { return isDirectory; }
     public boolean isHidden() { return isHidden; }
-    public String getType() { return type; }
 }

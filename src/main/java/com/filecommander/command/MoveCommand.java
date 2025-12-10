@@ -1,5 +1,6 @@
 package com.filecommander.command;
 
+import com.filecommander.localization.LocalizationManager;
 import com.filecommander.service.FileOperationService;
 
 import java.io.IOException;
@@ -20,37 +21,38 @@ public class MoveCommand extends AbstractFileOperation {
 
     @Override
     protected boolean validate() {
+        LocalizationManager loc = LocalizationManager.getInstance();
         for (Path source : sources) {
             if (!Files.exists(source)) {
-                validationError = "Source file does not exist: " + source.getFileName();
+                validationError = loc.getString("error.fileNotExist", source.getFileName());
                 return false;
             }
 
             Path sourceParent = source.getParent();
             if (sourceParent != null && sourceParent.equals(destination)) {
-                validationError = "Cannot move files to the same location";
+                validationError = loc.getString("error.cannotMoveSameFolder");
                 return false;
             }
 
             Path target = destination.resolve(source.getFileName());
             if (Files.exists(target)) {
-                validationError = "A file or folder with name '" + source.getFileName() + "' already exists in destination";
+                validationError = loc.getString("error.fileExistsDestination", source.getFileName());
                 return false;
             }
         }
 
         if (!Files.exists(destination)) {
-            validationError = "Destination folder does not exist: " + destination;
+            validationError = loc.getString("error.destinationNotExist", destination);
             return false;
         }
 
         if (!Files.isDirectory(destination)) {
-            validationError = "Destination is not a folder: " + destination.getFileName();
+            validationError = loc.getString("error.destinationNotFolder", destination.getFileName());
             return false;
         }
 
         if (!Files.isWritable(destination)) {
-            validationError = "No write permission for destination folder: " + destination.getFileName();
+            validationError = loc.getString("error.noWritePermission", destination.getFileName());
             return false;
         }
 
@@ -60,20 +62,20 @@ public class MoveCommand extends AbstractFileOperation {
     @Override
     protected void performOperation() throws IOException {
         FileOperationService service = FileOperationService.getInstance();
-        service.notifyStatus("Moving files...");
+        LocalizationManager loc = LocalizationManager.getInstance();
+        service.notifyStatus(loc.getString("operation.moving"));
 
         int total = sources.size();
         int current = 0;
 
         for (Path source : sources) {
             if (service.isCancelled()) {
-                throw new IOException("Operation cancelled by user");
+                throw new IOException(loc.getString("operation.cancelled"));
             }
 
             Path target = destination.resolve(source.getFileName());
 
             if (source.equals(target)) {
-                System.out.println("⚠️ Skipping - source and target are the same: " + source);
                 continue;
             }
 
@@ -81,7 +83,6 @@ public class MoveCommand extends AbstractFileOperation {
             Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
             current++;
             service.notifyProgress(current, total, source.getFileName().toString());
-            System.out.println("✅ Moved: " + source + " -> " + target);
         }
     }
 
@@ -90,13 +91,12 @@ public class MoveCommand extends AbstractFileOperation {
         for (Map.Entry<Path, Path> entry : movedFiles.entrySet()) {
             if (Files.exists(entry.getKey())) {
                 Files.move(entry.getKey(), entry.getValue(), StandardCopyOption.ATOMIC_MOVE);
-                System.out.println("Undo move: " + entry.getKey() + " -> " + entry.getValue());
             }
         }
     }
 
     @Override
     public String getDescription() {
-        return "Move " + sources.size() + " file(s) to " + destination;
+        return LocalizationManager.getInstance().getString("operation.description.move", sources.size(), destination);
     }
 }

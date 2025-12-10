@@ -1,5 +1,6 @@
 package com.filecommander.ui;
 
+import com.filecommander.localization.LocalizationManager;
 import com.filecommander.controller.FileController;
 import com.filecommander.model.FileItem;
 import javafx.application.Platform;
@@ -17,6 +18,7 @@ import javafx.scene.image.WritableImage;
 import javafx.scene.input.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.SVGPath;
 import javafx.stage.Popup;
 
 import java.nio.file.Files;
@@ -34,6 +36,7 @@ public class FXFilePanel extends BorderPane {
     private boolean isRenamingNewFolder = false;
     private javafx.scene.Node dragGhost;
 
+    private LocalizationManager loc;
     private TableView<FileItem> tableView;
     private TextField pathField;
     private Label statusLabel;
@@ -42,10 +45,14 @@ public class FXFilePanel extends BorderPane {
     private HBox statusBar;
     private boolean allowEdit = false;
 
+    private TableColumn<FileItem, String> nameCol;
+    private TableColumn<FileItem, String> sizeCol;
+    private TableColumn<FileItem, String> modifiedCol;
     private Button btnBack;
     private Button btnForward;
     private Button btnUp;
     private Button btnGo;
+    private Button btnTheme;
 
     private final Stack<Path> historyBack = new Stack<>();
     private final Stack<Path> historyForward = new Stack<>();
@@ -66,6 +73,7 @@ public class FXFilePanel extends BorderPane {
 
     public FXFilePanel(String initialPath) {
         this.currentPath = Paths.get(initialPath);
+        this.loc = LocalizationManager.getInstance();
         initializeUI();
         refreshFileList();
     }
@@ -76,7 +84,6 @@ public class FXFilePanel extends BorderPane {
 
     private void initializeUI() {
         getStyleClass().add("file-panel");
-
         setFocusTraversable(true);
 
         navBar = createNavigationBar();
@@ -87,6 +94,8 @@ public class FXFilePanel extends BorderPane {
 
         statusBar = createStatusBar();
         setBottom(statusBar);
+
+        updateInterfaceText();
 
         loadStyles();
         setupContextMenu();
@@ -142,30 +151,52 @@ public class FXFilePanel extends BorderPane {
         }
     }
 
+    public void updateLanguage() {
+        this.loc = LocalizationManager.getInstance();
+        updateInterfaceText();
+        refreshFileList();
+    }
+
+    private void updateInterfaceText() {
+        if (btnBack != null) btnBack.setTooltip(new Tooltip(loc.getString("panel.tooltip.back")));
+        if (btnForward != null) btnForward.setTooltip(new Tooltip(loc.getString("panel.tooltip.forward")));
+        if (btnUp != null) btnUp.setTooltip(new Tooltip(loc.getString("panel.tooltip.up")));
+        if (btnGo != null) btnGo.setTooltip(new Tooltip(loc.getString("panel.tooltip.go")));
+
+        if (pathField != null) pathField.setPromptText(loc.getString("panel.path.placeholder"));
+
+        if (nameCol != null) nameCol.setText(loc.getString("panel.column.name"));
+        if (sizeCol != null) sizeCol.setText(loc.getString("panel.column.size"));
+        if (modifiedCol != null) modifiedCol.setText(loc.getString("panel.column.modified"));
+
+        updateStatus();
+        updateDiskSpace();
+    }
+
     private HBox createNavigationBar() {
-        HBox nav = new HBox(8);
+        HBox nav = new HBox();
         nav.getStyleClass().add("nav-bar");
-        nav.setPadding(new Insets(12, 16, 12, 16));
+        nav.setPadding(new Insets(8, 12, 8, 12));
         nav.setAlignment(Pos.CENTER_LEFT);
+        nav.setSpacing(0);
 
-        String backPath = "M 10 0 L 0 5 L 10 10 Z";
+        String backPath    = "M 10 0 L 0 5 L 10 10 Z";
         String forwardPath = "M 0 0 L 10 5 L 0 10 Z";
-        String upPath = "M 5 0 L 10 10 L 0 10 Z";
-        String goPath = "M 0 0 L 8 5 L 0 10 Z";
-        String themePath = "M15.5 2.1c-6.1 0.2-10.7 5.3-10.4 11.4c0.2 4.8 3.9 8.8 8.6 9.4c-1.3-0.7-2.4-1.8-3.3-3.1c-2.3-3.4-1.5-8.1 1.9-10.4c1.9-1.3 4.3-1.8 6.2-1.4c-0.9-3.2-3.8-5.6-7-5.9h-4z";
+        String upPath      = "M 5 0 L 10 10 L 0 10 Z";
+        String goPath      = "M 0 0 L 8 5 L 0 10 Z";
+        String themePath   = "M15.5 2.1c-6.1 0.2-10.7 5.3-10.4 11.4c0.2 4.8 3.9 8.8 8.6 9.4c-1.3-0.7-2.4-1.8-3.3-3.1c-2.3-3.4-1.5-8.1 1.9-10.4c1.9-1.3 4.3-1.8 6.2-1.4c-0.9-3.2-3.8-5.6-7-5.9h-4z";
 
-        btnBack = createNavButton(backPath, "Back");
+        btnBack = createNavButton(backPath, "");
         btnBack.setOnAction(e -> navigateBack());
 
-        btnForward = createNavButton(forwardPath, "Forward");
+        btnForward = createNavButton(forwardPath, "");
         btnForward.setOnAction(e -> navigateForward());
 
-        btnUp = createNavButton(upPath, "Up");
+        btnUp = createNavButton(upPath, "");
         btnUp.setOnAction(e -> navigateUp());
 
         pathField = new TextField();
         pathField.getStyleClass().add("path-field");
-        pathField.setPromptText("Enter path...");
         pathField.setOnAction(e -> navigateToInputPath());
 
         pathField.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
@@ -182,43 +213,71 @@ public class FXFilePanel extends BorderPane {
 
         HBox.setHgrow(pathField, Priority.ALWAYS);
 
-        btnGo = createNavButton(goPath, "Go");
+        btnGo = createNavButton(goPath, "");
         btnGo.setOnAction(e -> navigateToInputPath());
 
-        Button btnTheme = createNavButton(themePath, "Toggle theme");
+        btnTheme = createNavButton(themePath, "");
         btnTheme.setOnAction(e -> toggleTheme());
 
-        nav.getChildren().addAll(btnBack, btnForward, btnUp, pathField, btnGo, btnTheme);
+        nav.getChildren().addAll(
+                wrapNavButton(btnBack),
+                wrapNavButton(btnForward),
+                wrapNavButton(btnUp),
+                pathField,
+                wrapNavButton(btnGo),
+                wrapNavButton(btnTheme)
+        );
+
+        updateNavigationButtonsState();
         return nav;
     }
 
-    private Button createNavButton(String svgPath, String tooltip) {
+
+
+    private StackPane wrapNavButton(Button button) {
+        StackPane wrapper = new StackPane();
+
+        wrapper.getChildren().add(button);
+
+        StackPane.setMargin(button, new Insets(0, 6, 0, 6));
+
+        wrapper.setPickOnBounds(false);
+
+        return wrapper;
+    }
+
+
+
+    private Button createNavButton(String svgPath, String tooltipText) {
         Button btn = new Button();
+
+        btn.setMinSize(28, 28);
+        btn.setPrefSize(28, 28);
+        btn.setMaxSize(28, 28);
+        btn.setFocusTraversable(false);
+        btn.setPickOnBounds(true);
+
+        SVGPath svg = new SVGPath();
+        svg.setContent(svgPath);
+        svg.getStyleClass().add("svg-icon");
+        svg.setMouseTransparent(true);
+
+        btn.setGraphic(svg);
         btn.getStyleClass().add("nav-button");
 
-        javafx.scene.shape.SVGPath icon = new javafx.scene.shape.SVGPath();
-        icon.setContent(svgPath);
-        icon.getStyleClass().add("svg-icon");
-
-        StackPane iconPane = new StackPane(icon);
-        iconPane.setPrefSize(16, 16);
-
-        btn.setGraphic(iconPane);
-        btn.setText(null);
-        btn.setTooltip(new Tooltip(tooltip));
-        btn.setMinSize(36, 36);
-        btn.setMaxSize(36, 36);
         return btn;
     }
 
-    private TableView<FileItem> createTableView() {
-        TableView<FileItem> table = new TableView<>();
-        table.getStyleClass().add("file-table");
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        table.setEditable(true);
 
-        TableColumn<FileItem, String> nameCol = new TableColumn<>("Name");
+
+    private TableView<FileItem> createTableView() {
+        tableView = new TableView<>();
+        tableView.getStyleClass().add("file-table");
+        tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tableView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+        tableView.setEditable(true);
+
+        nameCol = new TableColumn<>("");
         nameCol.getStyleClass().add("name-column");
         nameCol.setPrefWidth(400);
 
@@ -268,19 +327,19 @@ public class FXFilePanel extends BorderPane {
             }
         });
 
-        TableColumn<FileItem, String> sizeCol = new TableColumn<>("Size");
+        sizeCol = new TableColumn<>("");
         sizeCol.getStyleClass().add("size-column");
         sizeCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getFormattedSize()));
         sizeCol.setPrefWidth(100);
         sizeCol.setStyle("-fx-alignment: CENTER-RIGHT;");
 
-        TableColumn<FileItem, String> modifiedCol = new TableColumn<>("Modified");
+        modifiedCol = new TableColumn<>("");
         modifiedCol.getStyleClass().add("modified-column");
         modifiedCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getFormattedDate()));
         modifiedCol.setPrefWidth(130);
         modifiedCol.setStyle("-fx-alignment: CENTER-RIGHT;");
 
-        table.getColumns().addAll(nameCol, sizeCol, modifiedCol);
+        tableView.getColumns().addAll(nameCol, sizeCol, modifiedCol);
 
         Comparator<FileItem> defaultComparator = (o1, o2) -> {
             if (o1.isDirectory() && !o2.isDirectory()) return -1;
@@ -288,16 +347,16 @@ public class FXFilePanel extends BorderPane {
             return o1.getName().compareToIgnoreCase(o2.getName());
         };
 
-        table.setSortPolicy(param -> {
-            FXCollections.sort(table.getItems(), table.getComparator());
-            if (table.getSortOrder().isEmpty()) {
-                FXCollections.sort(table.getItems(), defaultComparator);
+        tableView.setSortPolicy(param -> {
+            FXCollections.sort(tableView.getItems(), tableView.getComparator());
+            if (tableView.getSortOrder().isEmpty()) {
+                FXCollections.sort(tableView.getItems(), defaultComparator);
                 return true;
             }
             return true;
         });
 
-        table.setRowFactory(tv -> {
+        tableView.setRowFactory(tv -> {
             TableRow<FileItem> row = new TableRow<>() {
                 @Override
                 protected void updateItem(FileItem item, boolean empty) {
@@ -336,23 +395,23 @@ public class FXFilePanel extends BorderPane {
             return row;
         });
 
-        table.getFocusModel().focusedIndexProperty().addListener((obs, oldVal, newVal) -> {
+        tableView.getFocusModel().focusedIndexProperty().addListener((obs, oldVal, newVal) -> {
             if (oldVal != null && oldVal.intValue() >= 0) {
-                table.refresh();
+                tableView.refresh();
             }
             if (newVal != null && newVal.intValue() >= 0) {
-                table.refresh();
+                tableView.refresh();
             }
         });
 
-        table.setOnMouseClicked(e -> {
+        tableView.setOnMouseClicked(e -> {
             if (e.getButton() == MouseButton.PRIMARY) {
                 requestActivation();
                 closeContextMenu();
             }
         });
 
-        return table;
+        return tableView;
     }
 
     private class SmartEditingCell extends TableCell<FileItem, String> {
@@ -549,13 +608,13 @@ public class FXFilePanel extends BorderPane {
         status.getStyleClass().add("status-bar");
         status.setPadding(new Insets(8, 16, 8, 16));
 
-        statusLabel = new Label("Selected: 0 | 0 folders, 0 files");
+        statusLabel = new Label(String.format(loc.getString("panel.status.selected"), 0, 0, 0));
         statusLabel.getStyleClass().add("status-label");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        diskSpaceLabel = new Label("0.0 GB free");
+        diskSpaceLabel = new Label(String.format(loc.getString("panel.disk.free"), 0.0));
         diskSpaceLabel.getStyleClass().add("disk-space-label");
 
         status.getChildren().addAll(statusLabel, spacer, diskSpaceLabel);
@@ -774,16 +833,16 @@ public class FXFilePanel extends BorderPane {
 
             if (isInSearchMode()) {
                 if (singleSelection) {
-                    MenuItem gotoItem = new MenuItem("\uD83D\uDCCD Go to Location");
+                    MenuItem gotoItem = new MenuItem(loc.getString("context.gotoLocation"));
                     gotoItem.setOnAction(ev -> showGoToLocationChoice(tableView.getSelectionModel().getSelectedItem().getPath()));
                     contextMenu.getItems().add(gotoItem);
 
                     if (tableView.getSelectionModel().getSelectedItem().isDirectory()) {
-                        MenuItem openFolderItem = new MenuItem("\uD83D\uDCC1 Open Folder");
+                        MenuItem openFolderItem = new MenuItem(loc.getString("context.openFolder"));
                         openFolderItem.setOnAction(ev -> showSearchModeActionDialog(tableView.getSelectionModel().getSelectedItem()));
                         contextMenu.getItems().add(openFolderItem);
                     } else {
-                        MenuItem openFileItem = new MenuItem("\uD83D\uDCC1 Open File");
+                        MenuItem openFileItem = new MenuItem(loc.getString("context.openFile"));
                         openFileItem.setOnAction(ev -> {
                             try {
                                 java.awt.Desktop.getDesktop().open(tableView.getSelectionModel().getSelectedItem().getPath().toFile());
@@ -799,7 +858,7 @@ public class FXFilePanel extends BorderPane {
                     contextMenu.getItems().add(new SeparatorMenuItem());
                 }
 
-                MenuItem copyItem = new MenuItem("\uD83D\uDCCB Copy to Other Panel");
+                MenuItem copyItem = new MenuItem(loc.getString("context.copyToOther"));
                 copyItem.setDisable(!hasSelection);
                 copyItem.setOnAction(ev -> {
                     if (mainWindow != null) {
@@ -813,14 +872,14 @@ public class FXFilePanel extends BorderPane {
                 });
                 contextMenu.getItems().add(copyItem);
 
-                MenuItem copyToCache = new MenuItem("\uD83D\uDCCB Copy to Cache (Ctrl+C)");
+                MenuItem copyToCache = new MenuItem(loc.getString("context.copyToClipboard"));
                 copyToCache.setDisable(!hasSelection);
                 copyToCache.setOnAction(ev -> copyToClipboard());
                 contextMenu.getItems().add(copyToCache);
 
             } else {
                 if (singleSelection && !tableView.getSelectionModel().getSelectedItem().isDirectory()) {
-                    MenuItem openItem = new MenuItem("\uD83D\uDCC1 Open");
+                    MenuItem openItem = new MenuItem(loc.getString("context.open"));
                     openItem.setOnAction(ev -> openFile(tableView.getSelectionModel().getSelectedItem()));
                     contextMenu.getItems().add(openItem);
                 }
@@ -829,40 +888,40 @@ public class FXFilePanel extends BorderPane {
                     contextMenu.getItems().add(new SeparatorMenuItem());
                 }
 
-                MenuItem copyItem = new MenuItem("\uD83D\uDCCB Copy (F3)");
+                MenuItem copyItem = new MenuItem(loc.getString("context.copy"));
                 copyItem.setDisable(!hasSelection);
                 copyItem.setOnAction(ev -> executeCommand("copy"));
                 contextMenu.getItems().add(copyItem);
 
-                MenuItem moveItem = new MenuItem("\uD83D\uDD00 Move (F6)");
+                MenuItem moveItem = new MenuItem(loc.getString("context.move"));
                 moveItem.setDisable(!hasSelection || isOtherPanelInSearchMode());
                 moveItem.setOnAction(ev -> executeCommand("move"));
                 contextMenu.getItems().add(moveItem);
 
-                MenuItem deleteItem = new MenuItem("\uD83D\uDDD1 Delete (F8)");
+                MenuItem deleteItem = new MenuItem(loc.getString("context.delete"));
                 deleteItem.setDisable(!hasSelection);
                 deleteItem.setOnAction(ev -> executeCommand("delete"));
                 contextMenu.getItems().add(deleteItem);
 
                 contextMenu.getItems().add(new SeparatorMenuItem());
 
-                MenuItem newFolderItem = new MenuItem("\u271A New Folder (F7)");
+                MenuItem newFolderItem = new MenuItem(loc.getString("context.newFolder"));
                 newFolderItem.setOnAction(ev -> executeCommand("newFolder"));
                 contextMenu.getItems().add(newFolderItem);
 
-                MenuItem renameItem = new MenuItem("\u270F Rename (F2)");
+                MenuItem renameItem = new MenuItem(loc.getString("context.rename"));
                 renameItem.setDisable(!singleSelection);
                 renameItem.setOnAction(ev -> executeCommand("rename"));
                 contextMenu.getItems().add(renameItem);
 
                 contextMenu.getItems().add(new SeparatorMenuItem());
 
-                MenuItem copyToCache = new MenuItem("\uD83D\uDCCB Copy to Cache (Ctrl+C)");
+                MenuItem copyToCache = new MenuItem(loc.getString("context.copyToClipboard"));
                 copyToCache.setDisable(!hasSelection);
                 copyToCache.setOnAction(ev -> copyToClipboard());
                 contextMenu.getItems().add(copyToCache);
 
-                MenuItem pasteItem = new MenuItem("\uD83D\uDCCB Paste from Cache (Ctrl+V)");
+                MenuItem pasteItem = new MenuItem(loc.getString("context.paste"));
                 pasteItem.setOnAction(ev -> pasteFromClipboard());
                 contextMenu.getItems().add(pasteItem);
             }
@@ -1072,8 +1131,9 @@ public class FXFilePanel extends BorderPane {
 
             if (panelMode == PanelMode.SEARCH_RESULTS) {
                 files = searchResults;
-                pathField.setText("Search results: \"" + searchQuery + "\" (" + searchResults.size() + " items)");
-                diskSpaceLabel.setText("0.0 GB free");
+                // ВИПРАВЛЕНО: loc.getString замість String.format
+                pathField.setText(loc.getString("panel.search.results", searchQuery, searchResults.size()));
+                diskSpaceLabel.setText(loc.getString("panel.disk.free", "0.00"));
 
                 pathField.setDisable(true);
                 btnBack.setDisable(true);
@@ -1139,12 +1199,23 @@ public class FXFilePanel extends BorderPane {
     }
 
     private void updateDiskSpace() {
-        try {
-            long availableBytes = Files.getFileStore(currentPath).getUsableSpace();
-            double availableGB = availableBytes / (1024.0 * 1024.0 * 1024.0);
-            diskSpaceLabel.setText(String.format("%.1f GB free", availableGB));
-        } catch (Exception e) {
-            diskSpaceLabel.setText("0.0 GB free");
+        boolean isRootDrive = currentPath.getParent() == null;
+
+        diskSpaceLabel.setVisible(isRootDrive);
+        diskSpaceLabel.setManaged(isRootDrive);
+
+        if (isRootDrive) {
+            try {
+                long availableBytes = Files.getFileStore(currentPath).getUsableSpace();
+                double availableGB = availableBytes / (1024.0 * 1024.0 * 1024.0);
+
+                String gbString = String.format("%.2f", availableGB);
+                diskSpaceLabel.setText(loc.getString("panel.disk.free", gbString));
+            } catch (Exception e) {
+                diskSpaceLabel.setText(loc.getString("panel.disk.free", "0.00"));
+            }
+        } else {
+            diskSpaceLabel.setText("");
         }
     }
 
@@ -1153,7 +1224,8 @@ public class FXFilePanel extends BorderPane {
         int total = tableView.getItems().size();
         int folders = (int) tableView.getItems().stream().filter(FileItem::isDirectory).count();
         int files = total - folders;
-        statusLabel.setText(String.format("Selected: %d | %d folders, %d files", selected, folders, files));
+
+        statusLabel.setText(loc.getString("panel.status.selected", selected, folders, files));
     }
 
     public void handleKeyPress(KeyCode keyCode) {
@@ -1269,14 +1341,15 @@ public class FXFilePanel extends BorderPane {
                         "-fx-border-radius: 14;"
         );
 
-        Label titleLabel = new Label("Copy " + selectedFiles.size() + " item(s) to:");
+        Label titleLabel = new Label(loc.getString("popup.copy.title", selectedFiles.size()));
+
         String textColor = isDarkTheme ? "#f1f5f9" : "#1e293b";
         titleLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: " + textColor + "; -fx-padding: 0 0 8 0;");
 
-        String currentButtonText = String.format("Current Panel: '%s' (C)", currentName);
-        String otherButtonText = String.format("Other Panel: '%s' (O)", otherName);
+        String currentButtonText = loc.getString("popup.copy.current", currentName);
+        String otherButtonText = loc.getString("popup.copy.other", otherName);
 
-        Button currentButton = new Button("📂 " + currentButtonText);
+        Button currentButton = new Button(currentButtonText);
 
         currentButton.getStyleClass().add("popup-button");
         String currentBtnBg = isDarkTheme ? "linear-gradient(to bottom, rgba(50,50,50,0.98), rgba(42,42,42,0.95))" : "linear-gradient(to bottom, rgba(248,250,252,0.98), rgba(241,245,249,0.98))";
@@ -1289,7 +1362,7 @@ public class FXFilePanel extends BorderPane {
                         "-fx-min-width: 280px; -fx-alignment: center-left;"
         );
 
-        Button otherButton = new Button("📂 " + otherButtonText);
+        Button otherButton = new Button(otherButtonText);
         otherButton.getStyleClass().add("popup-button");
         String otherBtnBg = isDarkTheme ? "linear-gradient(from 0% 0% to 100% 100%, #00d4e6 0%, #00e8ff 100%)" : "linear-gradient(from 0% 0% to 100% 100%, #0099a8 0%, #00b8cc 100%)";
         String otherBtnEffect = isDarkTheme ? "dropshadow(gaussian, rgba(0,212,230,0.5), 12, 0, 0, 3)" : "dropshadow(gaussian, rgba(0,153,168,0.4), 12, 0, 0, 3)";
@@ -1300,7 +1373,7 @@ public class FXFilePanel extends BorderPane {
                         "-fx-min-width: 280px; -fx-alignment: center-left; -fx-effect: " + otherBtnEffect + ";"
         );
 
-        Button cancelButton = new Button("Cancel");
+        Button cancelButton = new Button(loc.getString("popup.cancel"));
         cancelButton.getStyleClass().add("popup-button");
         String cancelBtnBg = isDarkTheme ? "rgba(50,50,50,0.5)" : "transparent";
         String cancelBtnBorder = isDarkTheme ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)";
@@ -1331,7 +1404,7 @@ public class FXFilePanel extends BorderPane {
                 e.consume();
                 copyDestinationPopup.hide();
                 controller.executeCopyOperation(this, currentFolderPath);
-            } else if (e.getCode() == KeyCode.O || text.equals("о")) {
+            } else if (e.getCode() == KeyCode.O || text.equals("щ")) {
                 e.consume();
                 copyDestinationPopup.hide();
                 controller.executeCopyOperation(this, otherPanelPath);
@@ -1484,12 +1557,14 @@ public class FXFilePanel extends BorderPane {
         );
 
         String itemName = file.getName().length() > 30 ? file.getName().substring(0, 30) + "..." : file.getName();
-        Label titleLabel = new Label("What would you like to do with '" + itemName + "'?");
+
+        Label titleLabel = new Label(loc.getString("popup.action.title", itemName));
+
         String textColor = isDarkTheme ? "#f1f5f9" : "#1e293b";
         titleLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: " + textColor + "; -fx-padding: 0 0 8 0;");
 
-        String gotoButtonText = file.isDirectory() ? "📂 Go to Location (G)" : "📍 Go to Location (G)";
-        String openButtonText = file.isDirectory() ? "📂 Open Folder (O)" : "📄 Open File (O)";
+        String gotoButtonText = loc.getString("popup.action.goto");
+        String openButtonText = file.isDirectory() ? loc.getString("popup.action.openFolder") : loc.getString("popup.action.openFile");
 
         Button gotoButton = new Button(gotoButtonText);
         gotoButton.getStyleClass().add("popup-button");
@@ -1514,7 +1589,7 @@ public class FXFilePanel extends BorderPane {
                         "-fx-min-width: 280px; -fx-alignment: center-left; -fx-effect: " + openBtnEffect + ";"
         );
 
-        Button cancelButton = new Button("Cancel");
+        Button cancelButton = new Button(loc.getString("popup.cancel"));
         cancelButton.getStyleClass().add("popup-button");
         String cancelBtnBg = isDarkTheme ? "rgba(50,50,50,0.5)" : "transparent";
         String cancelBtnBorder = isDarkTheme ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)";
@@ -1595,11 +1670,11 @@ public class FXFilePanel extends BorderPane {
                         "-fx-border-radius: 14;"
         );
 
-        Label titleLabel = new Label("Open folder in which panel?");
+        Label titleLabel = new Label(loc.getString("popup.openFolder.title"));
         String textColor = isDarkTheme ? "#f1f5f9" : "#1e293b";
         titleLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: " + textColor + "; -fx-padding: 0 0 8 0;");
 
-        Button currentButton = new Button("📂 Current Panel (C)");
+        Button currentButton = new Button(loc.getString("popup.openFolder.current"));
         currentButton.getStyleClass().add("popup-button");
         String currentBtnBg = isDarkTheme ? "linear-gradient(to bottom, rgba(50,50,50,0.98), rgba(42,42,42,0.95))" : "linear-gradient(to bottom, rgba(248,250,252,0.98), rgba(241,245,249,0.98))";
         String currentBtnBorder = isDarkTheme ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
@@ -1611,7 +1686,7 @@ public class FXFilePanel extends BorderPane {
                         "-fx-min-width: 280px; -fx-alignment: center-left;"
         );
 
-        Button otherButton = new Button("📂 Other Panel (O)");
+        Button otherButton = new Button(loc.getString("popup.openFolder.other"));
         otherButton.getStyleClass().add("popup-button");
         String otherBtnBg = isDarkTheme ? "linear-gradient(from 0% 0% to 100% 100%, #00d4e6 0%, #00e8ff 100%)" : "linear-gradient(from 0% 0% to 100% 100%, #0099a8 0%, #00b8cc 100%)";
         String otherBtnEffect = isDarkTheme ? "dropshadow(gaussian, rgba(0,212,230,0.5), 12, 0, 0, 3)" : "dropshadow(gaussian, rgba(0,153,168,0.4), 12, 0, 0, 3)";
@@ -1622,7 +1697,7 @@ public class FXFilePanel extends BorderPane {
                         "-fx-min-width: 280px; -fx-alignment: center-left; -fx-effect: " + otherBtnEffect + ";"
         );
 
-        Button cancelButton = new Button("Cancel");
+        Button cancelButton = new Button(loc.getString("popup.cancel"));
         cancelButton.getStyleClass().add("popup-button");
         String cancelBtnBg = isDarkTheme ? "rgba(50,50,50,0.5)" : "transparent";
         String cancelBtnBorder = isDarkTheme ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)";
@@ -1699,11 +1774,11 @@ public class FXFilePanel extends BorderPane {
                         "-fx-border-radius: 14;"
         );
 
-        Label titleLabel = new Label("Go to location in which panel?");
+        Label titleLabel = new Label(loc.getString("popup.gotoLocation.title"));
         String textColor = isDarkTheme ? "#f1f5f9" : "#1e293b";
         titleLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: " + textColor + "; -fx-padding: 0 0 8 0;");
 
-        Button currentButton = new Button("📍 Current Panel (C)");
+        Button currentButton = new Button(loc.getString("popup.gotoLocation.current"));
         currentButton.getStyleClass().add("popup-button");
         String currentBtnBg = isDarkTheme ? "linear-gradient(to bottom, rgba(50,50,50,0.98), rgba(42,42,42,0.95))" : "linear-gradient(to bottom, rgba(248,250,252,0.98), rgba(241,245,249,0.98))";
         String currentBtnBorder = isDarkTheme ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
@@ -1715,7 +1790,7 @@ public class FXFilePanel extends BorderPane {
                         "-fx-min-width: 280px; -fx-alignment: center-left;"
         );
 
-        Button otherButton = new Button("📍 Other Panel (O)");
+        Button otherButton = new Button(loc.getString("popup.gotoLocation.other"));
         otherButton.getStyleClass().add("popup-button");
         String otherBtnBg = isDarkTheme ? "linear-gradient(from 0% 0% to 100% 100%, #00d4e6 0%, #00e8ff 100%)" : "linear-gradient(from 0% 0% to 100% 100%, #0099a8 0%, #00b8cc 100%)";
         String otherBtnEffect = isDarkTheme ? "dropshadow(gaussian, rgba(0,212,230,0.5), 12, 0, 0, 3)" : "dropshadow(gaussian, rgba(0,153,168,0.4), 12, 0, 0, 3)";
@@ -1726,7 +1801,7 @@ public class FXFilePanel extends BorderPane {
                         "-fx-min-width: 280px; -fx-alignment: center-left; -fx-effect: " + otherBtnEffect + ";"
         );
 
-        Button cancelButton = new Button("Cancel");
+        Button cancelButton = new Button(loc.getString("popup.cancel"));
         cancelButton.getStyleClass().add("popup-button");
         String cancelBtnBg = isDarkTheme ? "rgba(50,50,50,0.5)" : "transparent";
         String cancelBtnBorder = isDarkTheme ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)";
@@ -1795,9 +1870,10 @@ public class FXFilePanel extends BorderPane {
 
     private void showSearchModeError() {
         Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle("Operation Not Available");
+        mainWindow.setIconForDialog(alert);
+        alert.setTitle(loc.getString("error.searchMode.title"));
         alert.setHeaderText(null);
-        alert.setContentText("This operation is not available in search results mode.\nOnly copying to the other panel and copying to cache are available.");
+        alert.setContentText(loc.getString("error.searchMode.message"));
         alert.showAndWait();
     }
 
@@ -1810,6 +1886,8 @@ public class FXFilePanel extends BorderPane {
         }
         this.currentPath = path;
         refreshFileList();
+
+        updateNavigationButtonsState();
 
         Platform.runLater(() -> {
             if (isActive && !tableView.getItems().isEmpty()) {
@@ -1829,6 +1907,9 @@ public class FXFilePanel extends BorderPane {
             historyForward.push(currentPath);
             currentPath = previousPath;
             refreshFileList();
+
+            // Оновлюємо стан кнопок
+            updateNavigationButtonsState();
         }
     }
 
@@ -1838,6 +1919,8 @@ public class FXFilePanel extends BorderPane {
             historyBack.push(currentPath);
             currentPath = nextPath;
             refreshFileList();
+
+            updateNavigationButtonsState();
         }
     }
 
@@ -1855,17 +1938,19 @@ public class FXFilePanel extends BorderPane {
                 navigateToPath(newPath);
             } else {
                 Alert alert = new Alert(Alert.AlertType.ERROR);
-                alert.setTitle("Path Error");
+                mainWindow.setIconForDialog(alert);
+                alert.setTitle(loc.getString("error.path.title"));
                 alert.setHeaderText(null);
-                alert.setContentText("Path does not exist or is not a directory");
+                alert.setContentText(loc.getString("error.path.notExists"));
                 alert.showAndWait();
                 pathField.setText(currentPath.toString());
             }
         } catch (Exception e) {
             Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Path Error");
+            mainWindow.setIconForDialog(alert);
+            alert.setTitle(loc.getString("error.path.title"));
             alert.setHeaderText(null);
-            alert.setContentText("Invalid path format");
+            alert.setContentText(loc.getString("error.path.invalid"));
             alert.showAndWait();
             pathField.setText(currentPath.toString());
         }
@@ -1950,5 +2035,25 @@ public class FXFilePanel extends BorderPane {
 
     public boolean isDarkTheme() {
         return isDarkTheme;
+    }
+
+    private void updateNavigationButtonsState() {
+        if (btnBack != null) {
+            boolean backDisabled = historyBack.isEmpty();
+            btnBack.setDisable(backDisabled);
+            btnBack.setOpacity(backDisabled ? 0.35 : 1.0);
+        }
+
+        if (btnForward != null) {
+            boolean forwardDisabled = historyForward.isEmpty();
+            btnForward.setDisable(forwardDisabled);
+            btnForward.setOpacity(forwardDisabled ? 0.35 : 1.0);
+        }
+
+        if (btnUp != null && currentPath != null) {
+            boolean upDisabled = currentPath.getParent() == null;
+            btnUp.setDisable(upDisabled);
+            btnUp.setOpacity(upDisabled ? 0.35 : 1.0);
+        }
     }
 }

@@ -1,5 +1,7 @@
 package com.filecommander.ui.dialogs;
 
+import com.filecommander.localization.LocalizationManager;
+
 import java.nio.file.Path;
 
 public class SearchParams {
@@ -9,19 +11,19 @@ public class SearchParams {
     private boolean includeSubdirectories;
 
     public enum ItemType {
-        FILES("Files only"),
-        FOLDERS("Folders only"),
-        BOTH("Files and Folders");
+        FILES("search.itemType.files"),
+        FOLDERS("search.itemType.folders"),
+        BOTH("search.itemType.both");
 
-        private final String displayName;
+        private final String localizationKey;
 
-        ItemType(String displayName) {
-            this.displayName = displayName;
+        ItemType(String localizationKey) {
+            this.localizationKey = localizationKey;
         }
 
         @Override
         public String toString() {
-            return displayName;
+            return LocalizationManager.getInstance().getString(localizationKey);
         }
     }
 

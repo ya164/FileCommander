@@ -1,5 +1,6 @@
 package com.filecommander.ui.dialogs;
 
+import com.filecommander.localization.LocalizationManager;
 import javafx.application.Platform;
 import javafx.concurrent.Worker;
 import javafx.scene.Scene;
@@ -18,9 +19,11 @@ public class WebViewProgressDialog extends Stage {
     private boolean isDarkTheme;
     private Runnable onCancel;
     private boolean isSearchMode = false;
+    private LocalizationManager loc;
 
     public WebViewProgressDialog(String title, boolean isDarkTheme) {
         this.isDarkTheme = isDarkTheme;
+        this.loc = LocalizationManager.getInstance();
         initializeWebView(title);
         initStyle(StageStyle.UNDECORATED);
         initModality(Modality.APPLICATION_MODAL);
@@ -109,6 +112,11 @@ public class WebViewProgressDialog extends Stage {
     }
 
     private String getHTMLContent(String title) {
+        String preparingText = loc.getString("progress.preparing");
+        String cancelText = loc.getString("progress.cancel");
+        String foundText = loc.getString("progress.found");
+        String scannedText = loc.getString("progress.scanned");
+
         return "<!DOCTYPE html>\n" +
                 "<html>\n" +
                 "<head>\n" +
@@ -253,10 +261,10 @@ public class WebViewProgressDialog extends Stage {
                 "</head>\n" +
                 "<body>\n" +
                 "<div class=\"header\">\n" +
-                "  <div class=\"title\">" + title + "</div>\n" +
+                "  <div class=\"title\">" + escapeJs(title) + "</div>\n" +
                 "</div>\n" +
                 "<div class=\"content\">\n" +
-                "  <div class=\"status\" id=\"status\">Preparing...</div>\n" +
+                "  <div class=\"status\" id=\"status\">" + escapeJs(preparingText) + "</div>\n" +
                 "  <div class=\"progress-container\">\n" +
                 "    <div class=\"progress-bar\" id=\"progressBar\" style=\"width:0%\"></div>\n" +
                 "  </div>\n" +
@@ -267,10 +275,12 @@ public class WebViewProgressDialog extends Stage {
                 "  <div class=\"current-file\" id=\"currentFile\">...</div>\n" +
                 "</div>\n" +
                 "<div class=\"footer\">\n" +
-                "  <button class=\"btn-cancel\" onclick=\"cancel()\">Cancel</button>\n" +
+                "  <button class=\"btn-cancel\" onclick=\"cancel()\">" + escapeJs(cancelText) + "</button>\n" +
                 "</div>\n" +
                 "<script>\n" +
                 "let isSearchMode = false;\n" +
+                "const foundLabel = '" + escapeJs(foundText) + "';\n" +
+                "const scannedLabel = '" + escapeJs(scannedText) + "';\n" +
                 "function setSearchMode(mode) {\n" +
                 "  isSearchMode = mode;\n" +
                 "  if (mode) {\n" +
@@ -284,8 +294,8 @@ public class WebViewProgressDialog extends Stage {
                 "  document.getElementById('currentFile').textContent = file;\n" +
                 "}\n" +
                 "function updateSearchProgress(scanned, found, path) {\n" +
-                "  document.getElementById('percentage').textContent = 'Found: ' + found;\n" +
-                "  document.getElementById('fileCount').textContent = 'Scanned: ' + scanned;\n" +
+                "  document.getElementById('percentage').textContent = foundLabel + ': ' + found;\n" +
+                "  document.getElementById('fileCount').textContent = scannedLabel + ': ' + scanned;\n" +
                 "  document.getElementById('currentFile').textContent = path;\n" +
                 "}\n" +
                 "function setStatus(status) {\n" +
