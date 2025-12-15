@@ -125,7 +125,7 @@ Navigation:
 
 ## 🛠 Installation (Windows MSI)
 
-1. Download `FileCommander-1.2.msi`
+1. Download `FileCommander-x.x.msi`
 2. Run the installer
 3. Select install directory (`C:\Program Files\FileCommander\`)
 4. Launch from Start Menu or Desktop
@@ -135,9 +135,3 @@ On first launch:
 * Creates `%USERPROFILE%\FileCommander\`
 * Initializes the SQLite database
 * Opens both panels at `C:\`
-
----
-
-## 🗑 Uninstalling
-
-Windows Settings → Apps → FileCommander → Uninstall
